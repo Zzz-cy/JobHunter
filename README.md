@@ -255,7 +255,7 @@ git config --global http.sslBackend schannel
 
 ```bash
 # 1. 开始干活前(每天早上 / 每次切换工作时)
-cd /c/GitHub/JobHunter/frontend    # 或 backend
+cd /c/你的项目位置
 git pull
 
 # 2. 写代码...
