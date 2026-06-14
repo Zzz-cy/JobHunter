@@ -254,8 +254,21 @@ git config --global http.sslBackend schannel
 **完整推荐流程：**
 
 ```bash
+# 0. 切换到要修改的分支/仓库
+#    本项目前后端分别在 frontend 和 backend 两个独立目录里
+#    改哪一端,就 cd 到对应目录
+cd /c/frontend    # 改前端
+# 或
+cd /c/backend     # 改后端
+
+# 0.1 确认当前分支正确(协作者首次拉代码后建议执行)
+git branch               # 查看当前分支
+# frontend 目录下应在 frontend 分支
+# backend  目录下应在 backend  分支
+# 如果不对,切过去:
+git checkout frontend    # 或 git checkout backend
+
 # 1. 开始干活前(每天早上 / 每次切换工作时)
-cd /c/你的项目位置
 git pull
 
 # 2. 写代码...
@@ -272,6 +285,10 @@ git add .
 git commit -m "feat: 描述你改了啥"
 git push
 ```
+
+> ⚠️ **重要**：本项目前后端分别在 `frontend` 和 `backend` 两个独立目录里。
+> - 改前端 → 在 `frontend/` 目录下操作（对应 `frontend` 分支）
+> - 改后端 → 在 `backend/` 目录下操作（对应 `backend` 分支）
 
 ### 为什么要先拉再提交
 
