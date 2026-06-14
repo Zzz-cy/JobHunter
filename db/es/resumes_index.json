@@ -1,0 +1,53 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "ik_smart_analyzer": { "type": "custom", "tokenizer": "ik_smart", "filter": ["lowercase"] },
+        "ik_max_analyzer":   { "type": "custom", "tokenizer": "ik_max_word", "filter": ["lowercase"] }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "resume_id":     { "type": "long" },
+      "resume_code":   { "type": "keyword" },
+      "user_id":       { "type": "long" },
+
+      "name":          { "type": "keyword" },
+      "expect_job":    {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "search_analyzer": "ik_smart_analyzer"
+      },
+      "city":          { "type": "keyword" },
+      "expect_city":   { "type": "keyword" },
+
+      "work_years":    { "type": "integer" },
+      "education":     { "type": "keyword" },
+
+      "expect_salary_min": { "type": "integer" },
+      "expect_salary_max": { "type": "integer" },
+
+      "skills":           { "type": "keyword" },
+      "skills_text":      {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "search_analyzer": "ik_smart_analyzer"
+      },
+
+      "experience_summary": {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "search_analyzer": "ik_smart_analyzer"
+      },
+
+      "companies":   { "type": "keyword" },
+      "schools":     { "type": "keyword" },
+
+      "overall_score": { "type": "float" },
+      "updated_at":    { "type": "date", "format": "strict_date_optional_time||epoch_millis" }
+    }
+  }
+}
