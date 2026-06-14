@@ -231,7 +231,111 @@ git config --global http.sslBackend schannel
 
 ## 六、分支与协作
 
+### 分支划分
+
 - `main`：项目总览（仅 README.md）
 - `frontend`：前端代码
 - `backend`：后端代码
-- 提交信息建议：`<type>: <desc>`，例如 `feat: 新增职位搜索接口`、`fix: 修复登录态丢失`
+
+### 提交信息规范
+
+`<type>: <desc>`，例如 `feat: 新增职位搜索接口`、`fix: 修复登录态丢失`
+
+| type | 用途 |
+|---|---|
+| `feat` | 新功能 |
+| `fix` | 修 bug |
+| `docs` | 文档 |
+| `refactor` | 重构 |
+| `chore` | 杂项（依赖、配置等） |
+
+### 日常开发流程（多人协作）
+
+**完整推荐流程：**
+
+```bash
+# 1. 开始干活前(每天早上 / 每次切换工作时)
+cd /c/GitHub/JobHunter/frontend    # 或 backend
+git pull
+
+# 2. 写代码...
+# (改文件)
+
+# 3. 提交前再拉一次,避免和队友刚推的代码冲突
+git pull
+
+# 4. 看一眼要提交哪些文件(防止误传)
+git status
+
+# 5. 确认无误后加 + 提交 + 推送
+git add .
+git commit -m "feat: 描述你改了啥"
+git push
+```
+
+### 为什么要先拉再提交
+
+队友可能在你写代码期间推了新代码。不拉就 push，会被拒绝（non-fast-forward）。
+提前拉能尽早发现冲突，避免白干。
+
+### 常用场景
+
+**只提交部分文件：**
+
+```bash
+git add app/api/users.py       # 只加这一个
+git commit -m "fix: 修复用户接口"
+git push
+```
+
+**看具体改动内容：**
+
+```bash
+git status          # 看哪些文件变了
+git diff            # 看具体改了什么内容
+```
+
+**误传了想撤回（不丢代码）：**
+
+```bash
+git reset HEAD 文件名        # 撤销暂存
+```
+
+### 冲突处理
+
+```bash
+git pull
+# Auto-merging xxx.py
+# CONFLICT (content): Merge conflict in xxx.py
+```
+
+打开冲突文件，会看到：
+
+```
+<<<<<<< HEAD
+你写的代码
+=======
+队友写的代码
+>>>>>>> 同事的commit
+```
+
+三选一：
+- 保留你的：删掉 `=======` 到 `>>>>>>>` 那段
+- 保留队友的：删掉 `<<<<<<<` 到 `=======` 那段
+- 合并两者：手动整合，删掉所有标记
+
+然后：
+
+```bash
+git add .
+git commit -m "merge: 合并xxx冲突"
+git push
+```
+
+### 关于 `git add .`
+
+会把当前目录下**所有变化**（新增、修改、删除）都加入暂存区。
+`.gitignore` 里排除的文件（如 `node_modules`、`.env`、`__pycache__`）不会进。
+
+⚠️ **危险场景**：你改了 A、B、C 三个文件但只想提交 A，用 `git add .` 会把 B、C 也带上。
+建议每次 `add` 前先 `git status` 确认。
