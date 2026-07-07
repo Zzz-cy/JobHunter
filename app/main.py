@@ -13,8 +13,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api import routers
 from app.core.config import settings
 from app.core.database import engine
+from app.core.exception_handlers import register_exception_handlers
 
 
 @asynccontextmanager
@@ -38,6 +40,17 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# ---------- 路由挂载 ----------
+# 从 api 包统一收集所有 router, 循环挂载。
+# 新增路由模块只改 app/api/__init__.py, 这里不用动。
+for _router in routers:
+    app.include_router(_router)
+
+# ---------- 全局异常处理器 ----------
+# 把 BizException / 参数校验错误 / 未预期异常 都转成统一 Result 格式。
+# 必须在路由挂载之后注册。
+register_exception_handlers(app)
 
 
 @app.get("/health", tags=["系统"])

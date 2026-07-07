@@ -6,16 +6,16 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from models import User
+from app.models import User
 
 load_dotenv()  # 加载 .env 文件中的环境变量
 
 # JWT 签名密钥，从环境变量读取，避免硬编码泄露
-SECRET_KEY = os.getenv("secret_key")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 # 签名算法，HS256 为对称加密（同一密钥签名+验签）
 ALGORITHM = "HS256"
 # 令牌默认过期时间（分钟）
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 # 从请求头 Authorization: Bearer <token> 中提取令牌
 # tokenUrl 指向登录接口，FastAPI 自动生成 Swagger 文档中的"锁"图标
