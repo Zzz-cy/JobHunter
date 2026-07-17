@@ -12,6 +12,7 @@ from app.schemas.base import ORMOut, SchemaBase
 from app.schemas.page import PageParams, PageResult
 from app.schemas.result import BizCode, Result
 from app.schemas.auth import RegisterSchema, LoginSchema, LoginOut, UserOut
+from app.schemas.jobs import JobSearchSchema, CompanyBrief, JobSkillOut, JobOut
 
 __all__ = [
     # ---- 基类 ----
@@ -28,4 +29,9 @@ __all__ = [
     "LoginOut",
     # ---- 获取用户信息 ----
     "UserOut",
+    # ---- 获取工作信息 ----
+    "JobSearchSchema",
+    "CompanyBrief",
+    "JobSkillOut",
+    "JobOut",
 ]

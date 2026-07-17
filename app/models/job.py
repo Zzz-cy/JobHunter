@@ -83,7 +83,8 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
     quality_score: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 2))
 
     # ---------- 关系 ----------
-    company: Mapped["Company"] = relationship(back_populates="jobs")  # noqa: F821
+    # lazy="selectin": 预加载, 避免 async 模式下访问 company 时触发同步懒加载(MissingGreenlet)
+    company: Mapped["Company"] = relationship(back_populates="jobs", lazy="selectin")  # noqa: F821
     skills: Mapped[list["JobSkill"]] = relationship(
         back_populates="job", lazy="selectin", cascade="all, delete-orphan",
     )
@@ -116,7 +117,13 @@ class JobSkill(Base):
     is_must: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     weight: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 2))
 
+    # ---------- 关系 ----------
+    # 双向关系: JobSkill 一端连 Job, 一端连 Skill
+    # 拿技能名就走这条: job_skill.skill.name
     job: Mapped[Job] = relationship(back_populates="skills")
+    skill: Mapped["Skill"] = relationship(  # noqa: F821
+        back_populates="job_skills", lazy="selectin",
+    )
 
     def __repr__(self) -> str:
         return f"<JobSkill(job_id={self.job_id}, skill_id={self.skill_id}, must={self.is_must})>"

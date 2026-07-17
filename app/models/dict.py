@@ -6,7 +6,7 @@
     - industries   行业/城市层级字典
 """
 from sqlalchemy import Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, BigIntPk, TimestampMixin
 
@@ -29,6 +29,12 @@ class Skill(Base, TimestampMixin):
     alias: Mapped[str | None] = mapped_column(String(255))
     category: Mapped[str | None] = mapped_column(String(64), index=True)
     is_hot: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+
+    # ---------- 反向关系 ----------
+    # 供 JobSkill.skill 反向引用; 查"某技能被多少职位需要"时也用得到。
+    job_skills: Mapped[list["JobSkill"]] = relationship(  # noqa: F821
+        back_populates="skill",
+    )
 
     def __repr__(self) -> str:
         return f"<Skill(id={self.id}, name={self.name!r}, category={self.category!r})>"
