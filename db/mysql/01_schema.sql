@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS `industries` (
 CREATE TABLE IF NOT EXISTS `users` (
     `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `user_code`     VARCHAR(64)  NOT NULL,
-    `phone`         VARCHAR(20)  DEFAULT NULL COMMENT '手机号(加密存储)',
+    `phone`         VARCHAR(20)  DEFAULT NULL COMMENT '手机号(明文存储,生产环境建议加密)',
     `email`         VARCHAR(128) DEFAULT NULL,
     `password_hash` VARCHAR(128) NOT NULL,
     `nickname`      VARCHAR(64)  DEFAULT NULL,
@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS `resumes` (
     `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `resume_code`    VARCHAR(64)  NOT NULL,
     `user_id`        BIGINT UNSIGNED NOT NULL,
+    `title`          VARCHAR(128) DEFAULT NULL COMMENT '用户自定义简历标题(如:高级 Python 工程师版)',
     `name`           VARCHAR(64)  NOT NULL COMMENT '姓名',
     `gender`         TINYINT      DEFAULT NULL COMMENT '0男 1女',
     `age`            INT          DEFAULT NULL,

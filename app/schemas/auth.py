@@ -7,7 +7,7 @@
     - 任何出参都绝不包含 password_hash
 
 流程:
-    注册:  前端传明文 password + phone/email → 校验唯一 → 加密成 hash → 生成 user_code → 存库
+    注册:  前端传明文 password + phone/email → 校验唯一 → 密码哈希成 hash → 生成 user_code → 存库
     登录:  前端传 account(手机号/邮箱) + password → 查库校验 → 发 JWT
 """
 from datetime import datetime
@@ -31,7 +31,7 @@ class RegisterSchema(SchemaBase):
     phone: str | None = Field(
         default=None,
         pattern=r"^1[3-9]\d{9}$",  # 中国手机号格式
-        description="手机号(明文传输, 后端加密存库)",
+        description="手机号(明文传输, 后端存库)",
         examples=["13800138000"],
     )
     email: str | None = Field(
@@ -41,10 +41,10 @@ class RegisterSchema(SchemaBase):
         examples=["user@example.com"],
     )
 
-    # ---------- 密码(明文, 后端加密) ----------
+    # ---------- 密码(明文, 后端哈希) ----------
     password: str = Field(
         min_length=6, max_length=64,
-        description="明文密码, 后端加密成 hash 存库",
+        description="明文密码, 后端哈希成 hash 存库",
         examples=["abc123456"],
     )
 

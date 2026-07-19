@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     SPARK_API_KEY: str = Field(default="")
     SPARK_API_SECRET: str = Field(default="")
 
+    # ---------- 文件上传 ----------
+    UPLOAD_DIR: str = Field(default="uploads", description="文件上传根目录(相对 backend/)")
+    RESUME_MAX_SIZE_MB: int = Field(default=10, description="简历文件大小上限(MB)")
+
     # ---------- 派生属性 ----------
     @property
     def MYSQL_DSN_ASYNC(self) -> str:

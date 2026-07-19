@@ -2,17 +2,22 @@
 
 import os
 from datetime import datetime, timedelta, timezone
+
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
 from app.models import User
 
 load_dotenv()  # 加载 .env 文件中的环境变量
 
 # JWT 签名密钥，从环境变量读取，避免硬编码泄露
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-# 签名算法，HS256 为对称加密（同一密钥签名+验签）
+# 签名算法，HS256 为基于 HMAC 的对称签名（同一密钥签名+验签，非加密）
 ALGORITHM = "HS256"
 # 令牌默认过期时间（分钟）
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440
@@ -53,7 +58,10 @@ def decode_access_token(token: str) -> dict:
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
     """FastAPI 依赖项：从请求头中提取令牌并返回当前用户对象
 
     使用方式：在路由函数参数中加 current_user: User = Depends(get_current_user)
@@ -61,6 +69,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
 
     Args:
         token: 由 oauth2_scheme 自动从请求头提取的 JWT 字符串
+        db: 注入的数据库会话
 
     Returns:
         当前登录的 User 模型实例
@@ -75,13 +84,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     )
     try:
         payload = decode_access_token(token)
-        user_id = int(payload.get("sub"))  # sub 字段存的是用户 id（字符串），转回 int
-        if user_id is None:
+        # sub 存的是登录时签发的 user_code（形如 U2026070746668），不是数字 id
+        user_code = payload.get("sub")
+        if not user_code:
             raise credentials_exception
-    except JWTError:
+    except (JWTError, ValueError):
+        # JWTError: 令牌过期/签名无效/格式错误
+        # ValueError: 万一 payload 解析出来 sub 是意料之外的类型(防御性兜底)
         raise credentials_exception
 
-    user = await User.get_or_none(id=user_id)
+    user = await db.scalar(select(User).where(User.user_code == user_code))
     if user is None:
         raise credentials_exception
     return user

@@ -103,7 +103,7 @@ level=1  IT       "互联网/IT"   parent_id=NULL
 |---|---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | **PRI** | 自增主键 |
 | `user_code` | VARCHAR(64) | NO | — | **UNI** | 对外编码，URL 中使用（避免暴露自增 ID 被估算用户量） |
-| `phone` | VARCHAR(20) | YES | NULL | **UNI** | 手机号，**加密存储**（应用层 AES），唯一 |
+| `phone` | VARCHAR(20) | YES | NULL | **UNI** | 手机号，**明文存储**（生产环境建议应用层加密），唯一 |
 | `email` | VARCHAR(128) | YES | NULL | **UNI** | 邮箱，唯一 |
 | `password_hash` | VARCHAR(128) | NO | — | — | bcrypt 哈希（长度 ≥60，预留空间） |
 | `nickname` | VARCHAR(64) | YES | NULL | — | 昵称，前端展示用 |
@@ -119,7 +119,7 @@ level=1  IT       "互联网/IT"   parent_id=NULL
 - `idx_user_role`：管理后台"用户列表按角色筛选"
 
 **安全设计**：
-- `phone` 加密存储：即使数据库泄露，也无法直接获取手机号
+- `phone` 明文存储（当前为简化实现，生产环境建议应用层 AES 加密）
 - `password_hash` 用 bcrypt：抗彩虹表攻击
 
 ---
@@ -133,6 +133,7 @@ level=1  IT       "互联网/IT"   parent_id=NULL
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | **PRI** | 自增主键 |
 | `resume_code` | VARCHAR(64) | NO | — | **UNI** | 对外编码 |
 | `user_id` | BIGINT UNSIGNED | NO | — | MUL | 所属用户 ID |
+| `title` | VARCHAR(128) | YES | NULL | — | 用户自定义简历标题（如"高级 Python 工程师版"），卡片展示用，未填回退显示 `name` |
 | `name` | VARCHAR(64) | NO | — | — | 姓名 |
 | `gender` | TINYINT | YES | NULL | — | 性别（0=男，1=女） |
 | `age` | INT | YES | NULL | — | 年龄 |

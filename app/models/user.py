@@ -23,7 +23,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     # ---------- 对外编码 ----------
     user_code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
 
-    # ---------- 联系方式(加密存储) ----------
+    # ---------- 联系方式(明文存储, 生产环境建议加密) ----------
     phone: Mapped[str | None] = mapped_column(String(20), unique=True)
     email: Mapped[str | None] = mapped_column(String(128), unique=True)
 

@@ -47,6 +47,11 @@ class Resume(Base, TimestampMixin, SoftDeleteMixin):
         index=True,
     )
 
+    # ---------- 标题 ----------
+    # 用户上传时自定义的简历标题, 比如"高级 Python 工程师版", 用于在卡片上区分多份简历
+    # nullable=True: 老数据/未填写时为 NULL, 前端回退显示姓名 name
+    title: Mapped[str | None] = mapped_column(String(128))
+
     # ---------- 基本信息 ----------
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     gender: Mapped[int | None] = mapped_column(Integer)  # 0男 1女
@@ -117,6 +122,9 @@ class ResumeSkill(Base):
     years: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 1))
 
     resume: Mapped[Resume] = relationship(back_populates="skills")
+    # 关联到技能字典表, 这样 resume.skills[i].skill.name 就能拿到技能名
+    # lazy="selectin": 跟外层 resume.skills 一起 selectin, 避免每条 N+1
+    skill: Mapped["Skill"] = relationship(lazy="selectin")  # noqa: F821
 
     def __repr__(self) -> str:
         return f"<ResumeSkill(resume_id={self.resume_id}, skill_id={self.skill_id}, prof={self.proficiency})>"
