@@ -5,6 +5,20 @@
 <script setup>
 // 根组件,直接通过 router-view 渲染对应页面
 // 全局布局在 layouts/MainLayout.vue 中处理
+import { onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+// 刷新页面时:如果已登录,从后端拉一次最新用户信息
+onMounted(async () => {
+  if (!userStore.isLoggedIn) return
+  try {
+    await userStore.fetchUserInfo()
+  } catch {
+    userStore.logout()
+  }
+})
 </script>
 
 <style>

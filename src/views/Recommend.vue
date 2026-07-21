@@ -48,73 +48,17 @@
     <div v-else class="recommend-list" v-loading="recommending">
       <div
         v-for="(rec, idx) in recommendations"
-        :key="rec.id"
+        :key="rec.id || idx"
         class="recommend-item"
       >
-        <div class="match-score" :class="scoreLevel(rec.score)">
-          <div class="score-circle">
-            <span class="score-value">{{ rec.score }}</span>
-            <span class="score-unit">分</span>
-          </div>
-          <div class="score-label">{{ scoreLevelText(rec.score) }}</div>
-        </div>
-
-        <div class="recommend-body">
-          <div class="recommend-header">
-            <h3 class="rec-title" @click="goJobDetail(rec)">{{ rec.title || rec.job?.title }}</h3>
-            <span class="rec-salary">{{ rec.salary_text || salaryText(rec.job) }}</span>
-          </div>
-
-          <div class="rec-meta">
-            <span>{{ rec.company_name || rec.job?.company_name }}</span>
-            <el-divider direction="vertical" />
-            <span>{{ rec.city || rec.job?.city }}</span>
-            <el-divider direction="vertical" />
-            <span>{{ rec.experience_req || rec.job?.experience_req }}</span>
-          </div>
-
-          <!-- 推荐理由 (LLM 生成) -->
-          <div class="rec-reason">
-            <el-icon color="#67c23a"><ChatLineSquare /></el-icon>
-            <span>{{ rec.reason || '基于技能匹配度推荐' }}</span>
-          </div>
-
-          <!-- 技能匹配详情 -->
-          <div class="skill-match" v-if="rec.matched_skills && rec.matched_skills.length">
-            <span class="match-label">技能匹配:</span>
-            <SkillTag
-              v-for="s in rec.matched_skills"
-              :key="s.id"
-              :skill="s"
-              size="small"
-            />
-          </div>
-
-          <!-- 缺失技能 -->
-          <div class="skill-miss" v-if="rec.missing_skills && rec.missing_skills.length">
-            <span class="match-label">技能差距:</span>
-            <el-tag
-              v-for="s in rec.missing_skills"
-              :key="s.id"
-              type="danger"
-              size="small"
-              effect="plain"
-            >
-              {{ s.name }}
+        <div class="rec-rank">#{{ idx + 1 }}</div>
+        <div class="rec-main">
+          <JobCard :job="rec.job || rec" @click="goJobDetail(rec)" />
+          <div class="rec-extra" v-if="rec.score || rec.reason">
+            <el-tag v-if="rec.score" type="success" effect="dark" size="small">
+              匹配度 {{ rec.score }}分
             </el-tag>
-          </div>
-
-          <div class="rec-actions">
-            <el-button size="small" @click="goJobDetail(rec)">
-              查看详情
-            </el-button>
-            <el-button size="small" type="primary" @click="goApply(rec)">
-              <el-icon><Link /></el-icon>
-              去投递
-            </el-button>
-            <el-tag size="small" type="info" effect="plain">
-              策略: {{ strategyText(rec.strategy) }}
-            </el-tag>
+            <span v-if="rec.reason" class="rec-reason">{{ rec.reason }}</span>
           </div>
         </div>
       </div>
@@ -123,121 +67,96 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { MagicStick, Document, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import SkillTag from '@/components/common/SkillTag.vue'
-// import { useResumeStore } from '@/stores/resume'
-// import request from '@/utils/request'
+import JobCard from '@/components/common/JobCard.vue'
+import { useResumeStore } from '@/stores/resume'
+import request from '@/utils/request'
 
 const router = useRouter()
-// const resumeStore = useResumeStore()
+const resumeStore = useResumeStore()
 
-const resumeList = ref([])
 const selectedResumeId = ref(null)
+const resumeList = ref([])
 const recommendations = ref([])
 const recommending = ref(false)
 
-const salaryText = (job) => {
-  if (!job) return ''
-  if (!job.salary_min && !job.salary_max) return '薪资面议'
-  return `${job.salary_min || ''}-${job.salary_max || ''}K`
-}
-
-const scoreLevel = (score) => {
-  if (score >= 80) return 'level-high'
-  if (score >= 60) return 'level-mid'
-  return 'level-low'
-}
-
-const scoreLevelText = (score) => {
-  if (score >= 80) return '高度匹配'
-  if (score >= 60) return '较为匹配'
-  return '一般匹配'
-}
-
-const strategyText = (s) => {
-  const map = {
-    rag: '向量召回',
-    graph: '知识图谱',
-    hybrid: '混合策略',
-    cold_start: '冷启动'
+// 加载简历列表
+const loadResumes = async () => {
+  try {
+    await resumeStore.fetchResumeList()
+    resumeList.value = resumeStore.resumeList
+    // 自动选第一份
+    if (resumeList.value.length > 0) {
+      selectedResumeId.value = resumeList.value[0].id
+    }
+  } catch (err) {
+    console.error('加载简历失败', err)
   }
-  return map[s] || s
 }
 
+// 生成推荐
 const doRecommend = async () => {
   if (!selectedResumeId.value) {
     ElMessage.warning('请先选择简历')
     return
   }
   recommending.value = true
-  // TODO: 调用推荐接口
-  // try {
-  //   const res = await request.get('/recommendations', {
-  //     params: { resumeId: selectedResumeId.value, limit: 20 }
-  //   })
-  //   recommendations.value = res.list
-  //   ElMessage.success(`已生成 ${res.list.length} 条推荐`)
-  // } finally {
-  //   recommending.value = false
-  // }
-  console.log('[TODO] doRecommend', selectedResumeId.value)
-  setTimeout(() => {
+  try {
+    const data = await request.get('/recommend', {
+      params: { resume_id: selectedResumeId.value }
+    })
+    recommendations.value = data?.list || data || []
+    if (recommendations.value.length === 0) {
+      ElMessage.info('暂无推荐结果,试试完善简历?')
+    }
+  } catch (err) {
+    console.error('推荐失败', err)
+  } finally {
     recommending.value = false
-  }, 300)
+  }
 }
 
 const goJobDetail = (rec) => {
-  const jobId = rec.job_id || rec.job?.id
+  const jobId = rec.job?.id || rec.id
   if (jobId) router.push(`/jobs/${jobId}`)
-}
-
-const goApply = (rec) => {
-  const url = rec.source_url || rec.job?.source_url
-  if (!url) {
-    ElMessage.warning('未找到原站链接')
-    return
-  }
-  // TODO: 记录跳转 applications.status='clicked'
-  window.open(url, '_blank', 'noopener')
 }
 
 const goUploadResume = () => router.push('/resume')
 
-// TODO: 加载简历列表
-// import { onMounted } from 'vue'
-// onMounted(async () => {
-//   await resumeStore.fetchResumeList()
-//   resumeList.value = resumeStore.resumeList
-//   if (resumeList.value.length) {
-//     selectedResumeId.value = resumeList.value[0].id
-//   }
-// })
+onMounted(() => {
+  loadResumes()
+})
 </script>
 
 <style scoped>
+.recommend-page {
+  padding: 20px;
+}
+
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .page-title {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 600;
   color: #303133;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
 }
 
 .page-desc {
   color: #909399;
-  font-size: 14px;
+  font-size: 13px;
+  margin-top: 6px;
 }
 
 .resume-selector {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .selector-inner {
@@ -255,7 +174,7 @@ const goUploadResume = () => router.push('/resume')
 
 .selector-title {
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   color: #303133;
 }
 
@@ -273,130 +192,40 @@ const goUploadResume = () => router.push('/resume')
 
 .recommend-item {
   display: flex;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s;
+  gap: 16px;
+  align-items: flex-start;
 }
 
-.recommend-item:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-
-.match-score {
-  flex: 0 0 140px;
+.rec-rank {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 12px;
-  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
-.level-high {
-  background: linear-gradient(135deg, #67c23a, #4eaa1d);
-}
-
-.level-mid {
-  background: linear-gradient(135deg, #409eff, #1f7fe0);
-}
-
-.level-low {
-  background: linear-gradient(135deg, #e6a23c, #c4851a);
-}
-
-.score-circle {
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-.score-value {
-  font-size: 36px;
-  font-weight: 700;
-}
-
-.score-unit {
-  font-size: 13px;
-  margin-left: 2px;
-}
-
-.score-label {
-  font-size: 13px;
-  opacity: 0.95;
-}
-
-.recommend-body {
+.rec-main {
   flex: 1;
-  padding: 16px 24px;
   min-width: 0;
 }
 
-.recommend-header {
+.rec-extra {
+  margin-top: 8px;
+  padding: 0 4px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-
-.rec-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: #303133;
-  cursor: pointer;
-}
-
-.rec-title:hover {
-  color: #409eff;
-}
-
-.rec-salary {
-  font-size: 16px;
-  color: #ff5722;
-  font-weight: 600;
-}
-
-.rec-meta {
-  color: #606266;
-  font-size: 13px;
-  margin-bottom: 12px;
+  align-items: center;
+  gap: 12px;
 }
 
 .rec-reason {
-  background: #f0f9eb;
-  padding: 8px 12px;
-  border-radius: 4px;
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
+  font-size: 13px;
   color: #606266;
-  font-size: 13px;
-  line-height: 1.6;
-  margin-bottom: 12px;
-}
-
-.skill-match,
-.skill-miss {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.match-label {
-  font-size: 13px;
-  color: #909399;
-  margin-right: 4px;
-}
-
-.rec-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #f0f2f5;
+  flex: 1;
 }
 </style>

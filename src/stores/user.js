@@ -1,10 +1,24 @@
 import { defineStore } from 'pinia'
-// import request from '@/utils/request'
+import request from '@/utils/request'
+
+// 安全读取 localStorage 中的 JSON,解析失败返回 null(避免污染数据让整站崩)
+const safeReadJSON = (key) => {
+  try {
+    const raw = localStorage.getItem(key)
+    const parsed = raw ? JSON.parse(raw) : null
+    // 过滤掉 "undefined" / "null" 这类异常值
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    // 存的是脏数据(如字符串 "undefined"),清掉避免下次还崩
+    localStorage.removeItem(key)
+    return null
+  }
+}
 
 export const useUserStore = defineStore('user', {
   state: () => ({
     token: localStorage.getItem('token') || '',
-    userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null')
+    userInfo: safeReadJSON('userInfo')
   }),
 
   getters: {
@@ -15,26 +29,26 @@ export const useUserStore = defineStore('user', {
   actions: {
     // 登录
     async login(payload) {
-      // TODO: 调用后端登录接口
-      // const res = await request.post('/auth/login', payload)
-      // this.token = res.token
-      // this.userInfo = res.user
-      // localStorage.setItem('token', this.token)
-      // localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
-      console.log('[TODO] login', payload)
+      const res = await request.post('/auth/login', payload)
+      this.token = res.token
+      this.userInfo = res.user || null
+      localStorage.setItem('token', this.token)
+      // 只在拿到真实 user 对象时才存,避免写入 "undefined" 脏数据
+      if (this.userInfo) {
+        localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
+      } else {
+        localStorage.removeItem('userInfo')
+      }
     },
 
     // 注册
     async register(payload) {
-      // TODO: 调用后端注册接口
-      // const res = await request.post('/auth/register', payload)
-      // return res
-      console.log('[TODO] register', payload)
+      const res = await request.post('/auth/register', payload)
+      return res
     },
 
     // 退出登录
     async logout() {
-      // TODO: 可调用后端登出接口
       this.token = ''
       this.userInfo = null
       localStorage.removeItem('token')
@@ -43,10 +57,9 @@ export const useUserStore = defineStore('user', {
 
     // 获取当前用户信息
     async fetchUserInfo() {
-      // TODO: 调用后端获取用户信息
-      // const res = await request.get('/user/me')
-      // this.userInfo = res
-      // localStorage.setItem('userInfo', JSON.stringify(res))
+      const res = await request.get('/user/me')
+      this.userInfo = res
+      localStorage.setItem('userInfo', JSON.stringify(res))
     }
   }
 })

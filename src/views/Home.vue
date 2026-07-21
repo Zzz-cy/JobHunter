@@ -62,7 +62,7 @@
     <section class="hot-jobs-section page-container">
       <div class="section-header">
         <h2 class="section-title">
-          <el-icon color="#ff5722"><Hot /></el-icon>
+          <el-icon color="#ff5722"><TrendCharts /></el-icon>
           热门职位
         </h2>
         <el-button text @click="goJobList">

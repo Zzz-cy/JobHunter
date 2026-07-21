@@ -150,11 +150,11 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import JobCard from '@/components/common/JobCard.vue'
-// import { useJobStore } from '@/stores/job'
+import { useJobStore } from '@/stores/job'
 
 const router = useRouter()
 const route = useRoute()
-// const jobStore = useJobStore()
+const jobStore = useJobStore()
 
 const loading = ref(false)
 const total = ref(0)
@@ -192,12 +192,12 @@ const industryOptions = [
 ]
 const hotKeywords = ['Python', 'Java', '前端', '数据分析', '产品经理', '运营']
 
-const handleSearch = () => {
-  // TODO: 调用 store 或接口查询职位
-  // await jobStore.fetchJobList()
-  // jobList.value = jobStore.jobList
-  // total.value = jobStore.total
-  console.log('[TODO] search with filters:', { ...filters, sort: sortBy.value })
+const handleSearch = async () => {
+  // 把过滤条件同步到 store(薪资范围拆分等转换逻辑由 store 负责)
+  jobStore.setQueryParams(filters)
+  await jobStore.fetchJobList()
+  jobList.value = jobStore.jobList
+  total.value = jobStore.total
 }
 
 const handleReset = () => {
@@ -226,11 +226,10 @@ const goJobDetail = (job) => {
 const goResume = () => router.push('/resume')
 const goRecommend = () => router.push('/recommend')
 
-// TODO: 初始化加载第一页
-// import { onMounted } from 'vue'
-// onMounted(() => {
-//   handleSearch()
-// })
+import { onMounted } from 'vue'
+onMounted(() => {
+  handleSearch()
+})
 </script>
 
 <style scoped>

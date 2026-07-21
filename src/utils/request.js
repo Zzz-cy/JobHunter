@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from  '@/stores/user.js'
+import router from '@/router'
 
 // 创建 axios 实例
 const request = axios.create({
@@ -13,10 +15,9 @@ const request = axios.create({
 // 请求拦截器:自动带 token
 request.interceptors.request.use(
   (config) => {
-    // TODO: 从 localStorage 或 user store 读取 token
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    const userStore = useUserStore()
+    if (userStore.isLoggedIn) {
+      config.headers.Authorization = `Bearer ${userStore.token}`
     }
     return config
   },
@@ -27,12 +28,13 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const res = response.data
-    // TODO: 根据后端实际返回结构判断成功/失败
-    // if (res.code !== 0) {
-    //   ElMessage.error(res.message || '请求失败')
-    //   return Promise.reject(new Error(res.message || 'Error'))
-    // }
-    return res
+    if (res.code !== 0) {
+      ElMessage.error(res.message || '请求失败')
+      return Promise.reject(new Error(res.message || 'Error'))
+    }
+    // 后端统一返回结构 {code, message, data}
+    // 业务代码只关心 data,这里拆掉外壳,让调用方直接拿到业务数据
+    return res.data
   },
   (error) => {
     const message = error.response?.data?.message || error.message || '网络异常'
@@ -40,9 +42,9 @@ request.interceptors.response.use(
 
     // 401 未登录或登录过期
     if (error.response?.status === 401) {
-      // TODO: 清除登录信息,跳转登录页
-      // localStorage.removeItem('token')
-      // router.push('/login')
+      const userStore = useUserStore()
+      userStore.logout()
+      router.push('/login')
     }
     return Promise.reject(error)
   }

@@ -100,7 +100,7 @@
               </div>
               <div class="resume-info">
                 <div class="resume-name">
-                  {{ r.title || `简历 #${r.id}` }}
+                  {{ r.title || r.name || `简历 #${r.id}` }}
                   <el-tag size="small" :type="statusTagType(r.parse_status)">
                     {{ statusText(r.parse_status) }}
                   </el-tag>
@@ -163,7 +163,7 @@
           <el-timeline>
             <el-timeline-item type="primary" timestamp="步骤 1">
               <strong>文件上传</strong>
-              <p>支持 PDF / Word / 图片,文件会被安全存储</p>
+              <p>支持 PDF / Word / 图片,文件存于服务器,仅本人可下载</p>
             </el-timeline-item>
             <el-timeline-item type="success" timestamp="步骤 2">
               <strong>OCR 文字识别</strong>
@@ -196,7 +196,7 @@
             <li>可上传多份简历对应不同岗位方向</li>
             <li>设为默认的简历将用于首页推荐</li>
             <li>解析失败可重新解析,不会重复计费</li>
-            <li>文件加密存储,仅你本人可见</li>
+            <li>文件安全存储,仅你本人可见</li>
           </ul>
         </el-card>
       </el-col>
@@ -209,10 +209,10 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import SkillTag from '@/components/common/SkillTag.vue'
-// import { useResumeStore } from '@/stores/resume'
+import { useResumeStore } from '@/stores/resume'
 
 const router = useRouter()
-// const resumeStore = useResumeStore()
+const resumeStore = useResumeStore()
 
 const uploadRef = ref(null)
 const fileList = ref([])
@@ -262,25 +262,19 @@ const doUpload = async () => {
   uploading.value = true
   parseStatus.value = 'uploading'
   parseError.value = ''
-  // TODO: 调用 store 上传 + 轮询
-  // try {
-  //   await resumeStore.uploadResume(pendingFile.value)
-  //   parseStatus.value = resumeStore.uploadStatus
-  //   if (parseStatus.value === 'done') {
-  //     ElMessage.success('简历解析完成')
-  //     await refreshList()
-  //     resetUpload()
-  //   } else if (parseStatus.value === 'failed') {
-  //     parseError.value = resumeStore.parseError
-  //   }
-  // } finally {
-  //   uploading.value = false
-  // }
-  console.log('[TODO] doUpload', pendingFile.value.name, resumeTitle.value)
-  setTimeout(() => {
+  try {
+    await resumeStore.uploadResume(pendingFile.value, resumeTitle.value)
+    parseStatus.value = resumeStore.uploadStatus
+    if (parseStatus.value === 'done') {
+      ElMessage.success('简历解析完成')
+      await refreshList()
+      resetUpload()
+    } else if (parseStatus.value === 'failed') {
+      parseError.value = resumeStore.parseError
+    }
+  } finally {
     uploading.value = false
-    parseStatus.value = 'idle'
-  }, 500)
+  }
 }
 
 const resetUpload = () => {
@@ -292,10 +286,8 @@ const resetUpload = () => {
 }
 
 const refreshList = async () => {
-  // TODO: 加载简历列表
-  // await resumeStore.fetchResumeList()
-  // resumeList.value = resumeStore.resumeList
-  console.log('[TODO] refreshList')
+  await resumeStore.fetchResumeList()
+  resumeList.value = resumeStore.resumeList
 }
 
 const viewDetail = (r) => {
@@ -369,11 +361,10 @@ const fileIconColor = (type) => ({
   manual: '#909399'
 }[type] || '#909399')
 
-// TODO: 初始化加载
-// import { onMounted } from 'vue'
-// onMounted(() => {
-//   refreshList()
-// })
+import { onMounted } from 'vue'
+onMounted(() => {
+  refreshList()
+})
 </script>
 
 <style scoped>

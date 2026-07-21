@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
+import { useUserStore } from '@/stores/user'
 
 const routes = [
   {
@@ -83,10 +84,8 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - JobHunter` : 'JobHunter'
 
-  // TODO: 从 user store 读取登录态
-  // const userStore = useUserStore()
-  // const isLoggedIn = userStore.isLoggedIn
-  const isLoggedIn = false // 占位:未接入登录逻辑前默认未登录
+  const userStore = useUserStore()
+  const isLoggedIn = userStore.isLoggedIn
 
   if (to.meta.requiresAuth && !isLoggedIn) {
     next({ name: 'Login', query: { redirect: to.fullPath } })

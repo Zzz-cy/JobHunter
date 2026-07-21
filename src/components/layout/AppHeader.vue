@@ -64,7 +64,7 @@
           </el-dropdown>
         </template>
         <template v-else>
-          <el-button type="text" @click="goLogin">登录</el-button>
+          <el-button link type="primary" @click="goLogin">登录</el-button>
           <el-button type="primary" @click="goRegister">注册</el-button>
         </template>
       </div>
@@ -75,17 +75,17 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-// import { useUserStore } from '@/stores/user'
-// import { ElMessageBox, ElMessage } from 'element-plus'
+import { storeToRefs } from 'pinia'
+import { useUserStore } from '@/stores/user'
+import { ElMessageBox, ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
-// const userStore = useUserStore()
+const userStore = useUserStore()
 
-// 登录态(占位,等接入 store 后改)
-const isLoggedIn = computed(() => false)
-const userInfo = computed(() => null)
-const username = computed(() => '')
+// 登录态:必须用 storeToRefs 包裹,否则解构后失去响应式
+// (登录/登出后右上角不会自动变化,要刷新才生效)
+const { isLoggedIn, userInfo, username } = storeToRefs(userStore)
 
 // 高亮当前菜单
 const activeMenu = computed(() => {
@@ -105,11 +105,10 @@ const handleCommand = async (cmd) => {
   } else if (cmd === 'resume') {
     router.push('/resume')
   } else if (cmd === 'logout') {
-    // TODO: 接入 user store 后实现退出
-    // await ElMessageBox.confirm('确定要退出登录吗?', '提示', { type: 'warning' })
-    // await userStore.logout()
-    // ElMessage.success('已退出登录')
-    // router.push('/home')
+    await ElMessageBox.confirm('确定要退出登录吗?', '提示', { type: 'warning' })
+    await userStore.logout()
+    ElMessage.success('已退出登录')
+    router.push('/home')
   }
 }
 </script>

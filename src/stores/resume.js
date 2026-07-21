@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-// import request from '@/utils/request'
+import request from '@/utils/request'
 
 export const useResumeStore = defineStore('resume', {
   state: () => ({
@@ -32,34 +32,31 @@ export const useResumeStore = defineStore('resume', {
   actions: {
     // 获取简历列表
     async fetchResumeList() {
-      // TODO: 调用后端接口
-      // const res = await request.get('/resumes')
-      // this.resumeList = res.list
-      console.log('[TODO] fetchResumeList')
+      const res = await request.get('/resumes/all')
+      this.resumeList = res
     },
 
     // 上传简历文件
-    async uploadResume(file) {
+    async uploadResume(file, title) {
       this.uploadStatus = 'uploading'
       this.parseError = ''
-      // TODO: 上传文件并触发解析
-      // const formData = new FormData()
-      // formData.append('file', file)
-      // try {
-      //   const res = await request.post('/resumes/upload', formData, {
-      //     headers: { 'Content-Type': 'multipart/form-data' },
-      //     onUploadProgress: (e) => {
-      //       this.parseProgress = Math.round((e.loaded * 100) / e.total)
-      //     }
-      //   })
-      //   this.uploadStatus = 'parsing'
-      //   // 轮询解析状态
-      //   await this.pollParseStatus(res.id)
-      // } catch (err) {
-      //   this.uploadStatus = 'failed'
-      //   this.parseError = err.message
-      // }
-      console.log('[TODO] uploadResume', file.name)
+      const formData = new FormData()
+      formData.append('file', file)
+      if (title) formData.append('title', title)
+      try {
+        const res = await request.post('/resumes/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (e) => {
+            this.parseProgress = Math.round((e.loaded * 100) / e.total)
+          }
+        })
+        this.uploadStatus = 'parsing'
+        // 轮询解析状态
+        await this.pollParseStatus(res.id)
+      } catch (err) {
+        this.uploadStatus = 'failed'
+        this.parseError = err.message
+      }
     },
 
     // 轮询解析状态

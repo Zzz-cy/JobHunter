@@ -38,13 +38,13 @@
 
     <div class="card-footer">
       <div class="company-info">
-        <el-avatar :size="28" :src="job.company_logo">
-          {{ (job.company_name || '?').charAt(0) }}
+        <el-avatar :size="28" :src="job.company?.logo_url">
+          {{ (job.company?.name || '?').charAt(0) }}
         </el-avatar>
         <div class="company-detail">
-          <div class="company-name">{{ job.company_name || '公司名称' }}</div>
+          <div class="company-name">{{ job.company?.name || '公司名称' }}</div>
           <div class="company-meta">
-            {{ job.industry || '行业未知' }} · {{ job.size || '规模未知' }}
+            {{ companyText }}
           </div>
         </div>
       </div>
@@ -64,6 +64,19 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['click'])
+
+// 行业文本:后端给的是 industry_code(如 'IT'),这里映射成中文,找不到就显示原值
+const industryText = computed(() => {
+  const code = props.job.company?.industry_code
+  if (!code) return '行业未知'
+  const map = { IT: '互联网/IT', FIN: '金融', EDU: '教育', MED: '医疗', MAN: '制造' }
+  return map[code] || code
+})
+
+const companyText = computed(() => {
+  const size = props.job.company?.size || '规模未知'
+  return `${industryText.value} · ${size}`
+})
 
 const salaryText = computed(() => {
   const j = props.job

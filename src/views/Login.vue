@@ -54,16 +54,6 @@
           登录
         </el-button>
 
-        <div class="auth-divider">
-          <el-divider>其他登录方式</el-divider>
-        </div>
-
-        <div class="auth-third">
-          <el-button circle :icon="Chat" />
-          <el-button circle :icon="Message" />
-          <el-button circle :icon="Iphone" />
-        </div>
-
         <div class="auth-footer">
           还没有账号?
           <el-link type="primary" :underline="false" @click="goRegister">
@@ -78,13 +68,13 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, Lock, Chat, Message, Iphone } from '@element-plus/icons-vue'
+import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-// import { useUserStore } from '@/stores/user'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
-// const userStore = useUserStore()
+const userStore = useUserStore()
 
 const formRef = ref(null)
 const loading = ref(false)
@@ -94,6 +84,13 @@ const form = reactive({
   password: '',
   remember: false
 })
+
+// 进入登录页时,如果之前勾过"记住我",自动回填账号并保持勾选
+const savedAccount = localStorage.getItem('rememberAccount')
+if (savedAccount) {
+  form.account = savedAccount
+  form.remember = true
+}
 
 const rules = {
   account: [
@@ -111,17 +108,29 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate()
     loading.value = true
-    // TODO: 调用 store 登录接口
-    // await userStore.login({
-    //   account: form.account,
-    //   password: form.password,
-    //   remember: form.remember
-    // })
+
+    // 1. 登录拿 token
+    await userStore.login({
+      account: form.account,
+      password: form.password
+    })
+
+    // 2. 拉最新用户信息(登录接口返回的 user 字段可能不全,这里以 /user/me 为准)
+    await userStore.fetchUserInfo()
+
+    // 3. 处理"记住账号"(纯前端偏好,不发后端)
+    if (form.remember) {
+      localStorage.setItem('rememberAccount', form.account)
+    } else {
+      localStorage.removeItem('rememberAccount')
+    }
+
+    // 4. 跳转
     ElMessage.success('登录成功')
     const redirect = route.query.redirect || '/home'
     router.push(redirect)
   } catch (err) {
-    if (err?.message) ElMessage.error(err.message)
+    console.error(err)
   } finally {
     loading.value = false
   }
@@ -208,17 +217,6 @@ const goRegister = () => router.push('/register')
 
 .auth-submit {
   width: 100%;
-}
-
-.auth-divider {
-  margin: 24px 0;
-}
-
-.auth-third {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 20px;
 }
 
 .auth-footer {

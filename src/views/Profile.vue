@@ -125,37 +125,47 @@
           </template>
 
           <el-form
+            ref="settingsFormRef"
             :model="settings"
+            :rules="settingsRules"
             label-width="100px"
             style="max-width: 500px"
           >
-            <el-form-item label="昵称">
-              <el-input v-model="settings.nickname" />
+            <el-form-item label="昵称" prop="nickname">
+              <el-input v-model="settings.nickname" placeholder="未设置" />
             </el-form-item>
-            <el-form-item label="邮箱">
-              <el-input v-model="settings.email" placeholder="选填" />
-            </el-form-item>
-            <el-form-item label="求职意向">
+            <el-form-item label="手机号" prop="phone">
               <el-input
-                v-model="settings.intent"
-                type="textarea"
-                :rows="3"
-                placeholder="例如:Python 后端,北京,期望 25-35K"
+                v-model="settings.phone"
+                placeholder="未设置"
+                maxlength="11"
               />
             </el-form-item>
-            <el-form-item label="期望城市">
-              <el-select v-model="settings.expectCity" placeholder="选择期望城市" clearable>
-                <el-option v-for="c in cityOptions" :key="c" :label="c" :value="c" />
-              </el-select>
+            <el-form-item label="邮箱" prop="email">
+              <el-input v-model="settings.email" placeholder="未设置" />
             </el-form-item>
-            <el-form-item label="期望薪资">
-              <el-slider
-                v-model="settings.expectSalary"
-                range
-                :min="0"
-                :max="100"
-                :step="5"
-                :marks="{ 0: '0K', 50: '50K', 100: '100K+' }"
+            <el-form-item label="原密码" prop="oldPassword">
+              <el-input
+                v-model="settings.oldPassword"
+                type="password"
+                placeholder="不修改请留空"
+                show-password
+              />
+            </el-form-item>
+            <el-form-item label="新密码" prop="newPassword">
+              <el-input
+                v-model="settings.newPassword"
+                type="password"
+                placeholder="不修改请留空"
+                show-password
+              />
+            </el-form-item>
+            <el-form-item label="确认新密码" prop="confirmPassword">
+              <el-input
+                v-model="settings.confirmPassword"
+                type="password"
+                placeholder="再次输入新密码"
+                show-password
               />
             </el-form-item>
             <el-form-item>
@@ -163,14 +173,6 @@
               <el-button @click="resetSettings">重置</el-button>
             </el-form-item>
           </el-form>
-
-          <el-divider />
-
-          <div class="danger-zone">
-            <h4>危险操作</h4>
-            <el-button type="danger" plain @click="changePassword">修改密码</el-button>
-            <el-button type="danger" plain @click="logoutAll">退出所有设备</el-button>
-          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -180,35 +182,31 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import JobCard from '@/components/common/JobCard.vue'
-// import { useUserStore } from '@/stores/user'
-// import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
+import request from '@/utils/request'
 
 const router = useRouter()
-// const userStore = useUserStore()
+const userStore = useUserStore()
 
 const activeTab = ref('jobs')
 const jobStatus = ref('clicked')
 const applications = ref([])
 const favoriteJobs = ref([])
 
-const userInfo = computed(() => ({
-  nickname: '',
-  phone: '',
-  avatar_url: ''
-}))
-const username = computed(() => userInfo.value.nickname || '')
+// 用户信息直接从 store 读(登录后/改资料后都会同步更新)
+const userInfo = computed(() => userStore.userInfo || {})
+const username = computed(() => userInfo.value.nickname || userInfo.value.phone || '用户')
 
 const settings = reactive({
   nickname: '',
+  phone: '',
   email: '',
-  intent: '',
-  expectCity: '',
-  expectSalary: [10, 30]
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 })
-
-const cityOptions = ['北京', '上海', '深圳', '广州', '杭州', '成都', '南京', '武汉', '西安']
 
 const handleStatusChange = () => {
   loadApplications()
@@ -266,48 +264,126 @@ const goJobDetail = (app) => {
   if (jobId) router.push(`/jobs/${jobId}`)
 }
 
+const settingsFormRef = ref(null)
+
+// 保存设置:统一表单提交,根据是否填密码决定调哪个接口
 const saveSettings = async () => {
-  // TODO: 调用后端保存设置
-  // await request.put('/user/settings', settings)
-  ElMessage.success('设置已保存')
+  if (!settingsFormRef.value) return
+  try {
+    await settingsFormRef.value.validate()
+
+    // 改密码时,原密码和新密码必须同时填或同时不填
+    const hasOld = !!settings.oldPassword
+    const hasNew = !!settings.newPassword
+    if (hasOld !== hasNew) {
+      ElMessage.warning('请把原密码和新密码都填上,或都留空')
+      return
+    }
+
+    // 构造请求体:只传非空字段,避免把空字符串当新值传给后端
+    // 后端 PUT /user/update 是综合接口,资料和密码一次搞定
+    const payload = {}
+    if (settings.nickname) payload.nickname = settings.nickname
+    if (settings.phone) payload.phone = settings.phone
+    if (settings.email) payload.email = settings.email
+    if (hasOld && hasNew) {
+      payload.old_password = settings.oldPassword
+      payload.new_password = settings.newPassword
+    }
+
+    if (Object.keys(payload).length === 0) {
+      ElMessage.info('没有要保存的改动')
+      return
+    }
+
+    await request.put('/user/update', payload)
+
+    // 保存成功后,同步刷新 store 里的 userInfo(右上角头像旁的昵称等会跟着更新)
+    await userStore.fetchUserInfo()
+
+    // 提示:改了密码就提示密码,否则提示资料
+    ElMessage.success(hasOld && hasNew ? '密码已修改' : '设置已保存')
+
+    // 清空密码框(昵称/手机号/邮箱保留显示)
+    settings.oldPassword = ''
+    settings.newPassword = ''
+    settings.confirmPassword = ''
+  } catch (err) {
+    // 校验失败 Element Plus 自动在表单上提示错误
+    if (err?.message) ElMessage.error(err.message)
+  }
 }
 
 const resetSettings = () => {
   Object.assign(settings, {
     nickname: '',
+    phone: '',
     email: '',
-    intent: '',
-    expectCity: '',
-    expectSalary: [10, 30]
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   })
 }
 
-const changePassword = () => {
-  ElNotification.info('修改密码功能待实现')
+// 确认密码校验:必须和新密码一致
+const validateConfirm = (_rule, value, callback) => {
+  if (value !== settings.newPassword) callback(new Error('两次输入的密码不一致'))
+  else callback()
 }
 
-const logoutAll = async () => {
-  try {
-    await ElMessageBox.confirm('确定要退出所有设备的登录状态吗?', '提示', {
-      type: 'warning'
-    })
-    // TODO: 调用退出所有设备接口
-    ElMessage.success('已退出所有设备')
-    router.push('/login')
-  } catch {}
+// 账号设置表单的校验规则
+const settingsRules = {
+  phone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  email: [
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+  ],
+  newPassword: [
+    { min: 6, max: 20, message: '密码 6-20 位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { validator: validateConfirm, trigger: 'blur' }
+  ]
 }
+
 
 const formatTime = (t) => {
   if (!t) return '-'
   return new Date(t).toLocaleString('zh-CN')
 }
 
-// TODO: 初始化加载
-// import { onMounted } from 'vue'
-// onMounted(() => {
-//   loadApplications()
-//   loadFavorites()
-// })
+import { onMounted } from 'vue'
+
+const loadUserInfo = async () => {
+  try {
+    const info = userStore.userInfo || {}
+    Object.assign(settings, {
+      nickname: info.nickname || '',
+      phone: info.phone || '',
+      email: info.email || ''
+    })
+
+    // 如果 store 里没数据(比如刷新后 localStorage 被清),再调后端拉一次
+    if (!info.id) {
+      await userStore.fetchUserInfo()
+      const fresh = userStore.userInfo || {}
+      Object.assign(settings, {
+        nickname: fresh.nickname || '',
+        phone: fresh.phone || '',
+        email: fresh.email || ''
+      })
+    }
+  } catch (err) {
+    console.error('加载用户信息失败', err)
+  }
+}
+
+onMounted(() => {
+  loadUserInfo()
+  loadApplications()
+  loadFavorites()
+})
 </script>
 
 <style scoped>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-// import request from '@/utils/request'
+import request from '@/utils/request'
 
 export const useJobStore = defineStore('job', {
   state: () => ({
@@ -34,18 +34,30 @@ export const useJobStore = defineStore('job', {
   },
 
   actions: {
+    // 把组件本地的过滤条件同步到 store.queryParams(发请求真正用的字段)
+    // salaryRange 是 "20-30" 这种字符串,这里拆成 salaryMin/salaryMax 两个数字
+    setQueryParams(filters) {
+      const [min, max] = filters.salaryRange
+        ? filters.salaryRange.split('-')
+        : ['', '']
+      const { salaryRange, ...rest } = filters
+      Object.assign(this.queryParams, {
+        ...rest,
+        salaryMin: min === '' ? null : Number(min),
+        salaryMax: max === '' ? null : Number(max)
+      })
+    },
+
     // 查询职位列表
     async fetchJobList() {
       this.loading = true
-      // TODO: 调用后端接口
-      // try {
-      //   const res = await request.get('/jobs', { params: this.queryParams })
-      //   this.jobList = res.list
-      //   this.total = res.total
-      // } finally {
-      //   this.loading = false
-      // }
-      this.loading = false
+      try {
+        const res = await request.get('/jobs/page', { params: this.queryParams })
+        this.jobList = res.items
+        this.total = res.total
+      } finally {
+        this.loading = false
+      }
     },
 
     // 获取职位详情
