@@ -4,7 +4,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import Field, computed_field
+from pydantic import Field
 
 from app.schemas.base import ORMOut
 from app.schemas.page import PageParams
@@ -35,10 +35,14 @@ class JobSearchSchema(PageParams, ORMOut):
 
 
 # ============================================================
-# 出参: 公司简要(嵌套在 JobOut 里)
+# 出参: 公司信息(嵌套在 JobOut 里)
 # ============================================================
 class CompanyBrief(ORMOut):
-    """职位卡片上展示的公司简要信息。"""
+    """职位卡片上展示的公司简要信息。
+
+    industry_name 来自 ORM 模型上的 @property(桥接 Company.industry.name),
+    CompanyDetail 继承本类时自动拥有该字段。
+    """
 
     id: int
     name: str
@@ -46,6 +50,7 @@ class CompanyBrief(ORMOut):
     industry_code: str | None = None
     size: str | None = None
     logo_url: str | None = None
+    industry_name: str | None = None
 
 
 # ============================================================
@@ -54,24 +59,20 @@ class CompanyBrief(ORMOut):
 class JobSkillOut(ORMOut):
     """职位要求的单个技能。
 
-    数据来源: job_skills 关联表 + skills 字典表(通过 relationship 取 name)。
-    ORM 对象 job_skill 上没有 skill_name 属性, 用 computed_property
-    从 job_skill.skill.name 取值。
+    skill_name / category / is_hot 都来自 ORM 模型上的 @property
+    (桥接 JobSkill.skill 字典表), Pydantic 的 from_attributes 模式能直接取到。
+
+    proficiency / years 是简历技能的字段, 职位没有, 故不声明
+    (SkillTag 组件用 v-if 判断, 缺失就不显示)。
     """
 
     skill_id: int
     is_must: int = 0
     weight: Decimal | None = None
-
-    @computed_field
-    @property
-    def skill_name(self) -> str | None:
-        """技能标准名, 从关联的 Skill 字典表取。"""
-        # ORM 对象通过 JobSkill.skill relationship 访问 Skill.name
-        # from_attributes 模式下, Pydantic 会把 self 当 ORM 对象,
-        # 这里用 getattr 兜底, 防止 skill 关系未加载时报错。
-        skill = getattr(self, "skill", None)
-        return getattr(skill, "name", None) if skill else None
+    skill_name: str | None = None
+    skill_code: str | None = None
+    category: str | None = None        # 分类(语言/框架/工具), 影响 SkillTag 颜色
+    is_hot: int = 0                     # 是否热门, 影响 SkillTag 是否显示火焰图标
 
 
 # ============================================================
@@ -102,3 +103,41 @@ class JobOut(ORMOut):
     # ---------- 嵌套关联 ----------
     company: CompanyBrief | None = None       # 来自 Job.company relationship
     skills: list[JobSkillOut] = []            # 来自 Job.skills relationship
+
+class CompanyDetail(CompanyBrief):
+    """公司完整(详情页用)。
+
+    继承 CompanyBrief, 自动拥有 industry_code + industry_name(computed_field),
+    """
+    full_name: str | None = None
+    stage: str | None = None
+    city: str | None = None
+    address: str | None = None
+    website: str | None = None
+    welfare: list[str] | None = None
+    description: str | None = None
+
+class JobDetailOut(JobOut):
+    """职位详情(重量)。
+
+    继承 JobOut, 在其基础上加详情字段。
+    """
+
+    # 详情页才需要的字段
+    description: str | None = None         # JD HTML 正文
+    description_text: str | None = None    # JD 纯文本
+    advantage: str | None = None           # 职位亮点
+    job_type: str = "full"
+    highlights: list | None = None
+    address: str | None = None
+
+    # 详情页公司信息更全
+    company: CompanyDetail | None = None   # 覆盖父类的 Brief
+
+class IndustryOut(ORMOut):
+    id: int
+    code: str
+    name: str
+    parent_id: int | None = None
+    level: int
+

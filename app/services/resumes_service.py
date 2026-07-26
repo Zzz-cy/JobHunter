@@ -69,13 +69,8 @@ async def save_resume_file(file: UploadFile, user_id: int, db: AsyncSession, tit
         2. 读文件内容到内存(校验大小)
         3. 生成唯一文件名, 写入 uploads/resumes/
         4. 在 resumes 表建记录(parse_status='pending', name 先填占位)
-
-    Args:
-        title: 用户自定义的简历标题, 可不传, 为空时卡片会回退显示姓名
-
-    Returns:
-        新建的 Resume 对象(已 commit, 含 id)
-
+    title: 用户自定义的简历标题, 可不传, 为空时卡片会回退显示姓名
+    Returns: 新建的 Resume 对象(已 commit, 含 id)
     Note:
         name 字段是 NOT NULL, 但上传时还没解析, 这里先填 "待解析",
         等 AI 解析完成后由后续步骤更新成真实姓名。

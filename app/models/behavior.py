@@ -56,18 +56,28 @@ class Application(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # ---------- 状态机 ----------
-    status: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="clicked", index=True,
+    # status 只管"投递进度"这一个维度,跟收藏(is_favorited)彻底解耦:
+    #   - None:        还没投递(可能只是收藏着)
+    #   - submitted:   已投递
+    #   - interviewed: 面试中
+    #   - offer:       拿到 offer
+    #   - rejected:    被拒
+    # 收藏维度独立用 is_favorited(下面), 两者互不影响。
+    # 这样"收藏但没投递" = status=None + is_favorited=1,
+    # "投递过 + 收藏着" = status='submitted' + is_favorited=1,组合自由。
+    status: Mapped[str | None] = mapped_column(
+        String(16), default=None, index=True,
+    )
+    # 收藏维度(独立布尔): 0=未收藏, 1=已收藏。
+    # 和 status 互不影响, 这样"收藏 + 已投递"等组合状态才能正确表达。
+    is_favorited: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, index=True,
     )
     match_score: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
 
     # ---------- 时间点 ----------
-    redirected_at: Mapped[datetime | None] = mapped_column(DateTime)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime)
     feedback_at: Mapped[datetime | None] = mapped_column(DateTime)
-
-    # ---------- 统计 ----------
-    click_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # ---------- 扩展 ----------
     external_source: Mapped[str | None] = mapped_column(String(32))
@@ -75,8 +85,10 @@ class Application(Base, TimestampMixin, SoftDeleteMixin):
 
     # ---------- 关系 ----------
     user: Mapped["User"] = relationship()  # noqa: F821
-    job: Mapped["Job"] = relationship()  # noqa: F821
-    resume: Mapped["Resume"] = relationship()  # noqa: F821
+    # lazy="selectin": 查 Application 时自动预加载关联的 Job,
+    # 避免在 async session 里访问 application.job 时触发同步懒加载报错(MissingGreenlet)
+    job: Mapped["Job"] = relationship(lazy="selectin")  # noqa: F821
+    resume: Mapped["Resume"] = relationship(lazy="selectin")  # noqa: F821
 
     def __repr__(self) -> str:
         return (

@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Job, Skill, Company, JobSkill
+from app.core.exceptions import NotFoundError
+from app.models import Job, Skill, Company, JobSkill, Application
 from app.schemas import JobSearchSchema
 
 
@@ -26,11 +29,12 @@ def _parse_salary_range(salary_range: str | None) -> tuple[int | None, int | Non
 
 
 # 排序方式映射表: sort 值 → 排序字段(倒序)
-# default/latest 按发布时间, salary 按薪资上限
+# TODO(推荐系统): default 目前和 latest 一样(纯按发布时间),
+#   接入推荐系统后应升级为多因素加权排序(相关度 + 新鲜度 + 薪资吸引力 + quality_score)。
 _SORT_MAP = {
-    "default": Job.publish_at.desc(),
-    "latest": Job.publish_at.desc(),
-    "salary": Job.salary_max.desc(),
+    "default": Job.publish_at.desc(),  # 综合(临时等于最新, 待推荐系统优化)
+    "latest": Job.publish_at.desc(),  # 最新: 纯按发布时间
+    "salary": Job.salary_max.desc(),  # 薪资: 纯按薪资上限
 }
 
 
@@ -105,3 +109,114 @@ async def query(job: JobSearchSchema, db: AsyncSession):
     jobs = result.unique().all()
 
     return jobs, total
+
+
+async def favorite_job(job_id: int, db: AsyncSession, user_id: int):
+    """收藏职位
+
+    只动 is_favorited 字段,不动 status。
+    收藏和投递是两个独立维度,组合自由:
+        - 收藏但没投递:is_favorited=1, status=None
+        - 投递过 + 也收藏:is_favorited=1, status='submitted'
+    """
+    stmt = select(Application).where(
+        Application.user_id == user_id,
+        Application.job_id == job_id,
+    )
+    application = await db.scalar(stmt)
+    if application:
+        application.is_deleted = 0
+        application.is_favorited = 1
+    else:
+        application = Application(
+            user_id=user_id,
+            job_id=job_id,
+            is_favorited=1,
+        )
+        db.add(application)
+    await db.commit()
+    await db.refresh(application)
+
+
+async def submit_application(job_id: int, db: AsyncSession, user_id: int):
+    """
+    投递和收藏独立:
+        - 之前收藏过:直接把 status 设为 submitted(收藏状态保留)
+        - 没记录:新建一条 status=submitted
+    """
+    stmt = select(Application).where(
+        Application.user_id == user_id,
+        Application.job_id == job_id,
+    )
+    application = await db.scalar(stmt)
+    if application:
+        application.is_deleted = 0
+        application.status = "submitted"  # 只更新投递状态,不动 is_favorited
+        application.submitted_at = datetime.now()
+    else:
+        application = Application(
+            user_id=user_id,
+            job_id=job_id,
+            status="submitted",
+            is_favorited=0,  # 默认没收藏
+            submitted_at=datetime.now(),
+        )
+        db.add(application)
+    await db.commit()
+    await db.refresh(application)
+
+
+async def unfavorite_job(job_id: int, db: AsyncSession, user_id: int):
+    """取消收藏(只动 is_favorited, 不删记录)。
+
+    不直接删记录的原因: 用户可能还在投递中(status=submitted/interviewed),
+    取消收藏不该影响投递进度。只有"既没收藏又没投递"的记录才软删除。
+    """
+    stmt = select(Application).where(
+        Application.user_id == user_id,
+        Application.job_id == job_id,
+        Application.is_deleted == 0,
+    )
+    application = await db.scalar(stmt)
+    if not application:
+        raise NotFoundError("记录不存在")
+
+    application.is_favorited = 0
+    # 如果用户也没投递(还在 clicked 初始态), 这条记录没价值了, 软删除
+    if application.status == "clicked":
+        application.is_deleted = 1
+    await db.commit()
+
+
+async def find_similar_jobs(db: AsyncSession, job_id: int):
+    """找相似职位(按技能重叠数排序)。
+
+    规则:
+        1. 拿当前职位的所有技能 id
+        2. 找其他职位里, 技能重叠最多的
+        3. 排除自己 + 只看在招的
+    """
+    skill_ids_result = await db.scalars(
+        select(JobSkill.skill_id).where(JobSkill.job_id == job_id)
+    )
+    skill_ids = skill_ids_result.all()
+    if not skill_ids:
+        return []
+    stmt = (
+        select(Job)
+        .join(JobSkill, JobSkill.job_id == Job.id)
+        .where(
+            JobSkill.skill_id.in_(skill_ids),  # 技能重叠
+            Job.id != job_id,  # 排除自己
+            Job.status == "active",  # 只看在招的
+            Job.is_deleted == 0,
+        )
+        .group_by(Job.id)  # 按职位分组(一个职位多技能会重复)
+        .order_by(
+            func.count(JobSkill.skill_id).desc(),  # 按重叠技能数排(相似度)
+            Job.publish_at.desc(),  # 重叠数同则看新鲜度
+        )
+        .limit(5)
+    )
+    result = await db.scalars(stmt)
+    return result.unique().all()  # unique() 去重(selectin 会产生重复父行)

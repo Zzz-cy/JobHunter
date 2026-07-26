@@ -125,5 +125,28 @@ class JobSkill(Base):
         back_populates="job_skills", lazy="selectin",
     )
 
+    # ---------- 派生属性(给 schema 用) ----------
+    # Pydantic v2 的 from_attributes 模式不能跨 relationship 取值,
+    # 在 ORM 上加 @property 桥接, schema 用普通字段就能取到 skill 字典表的字段。
+    @property
+    def skill_name(self) -> str | None:
+        """技能标准名, 从关联的 Skill 字典表取。"""
+        return self.skill.name if self.skill else None
+
+    @property
+    def skill_code(self) -> str | None:
+        """技能编码, 用于前端按技能搜索。"""
+        return self.skill.skill_code if self.skill else None
+
+    @property
+    def category(self) -> str | None:
+        """技能分类(语言/框架/工具/方向/软技能), 影响 SkillTag 颜色。"""
+        return self.skill.category if self.skill else None
+
+    @property
+    def is_hot(self) -> int:
+        """是否热门技能, 影响 SkillTag 是否显示火焰图标。"""
+        return self.skill.is_hot if self.skill else 0
+
     def __repr__(self) -> str:
         return f"<JobSkill(job_id={self.job_id}, skill_id={self.skill_id}, must={self.is_must})>"

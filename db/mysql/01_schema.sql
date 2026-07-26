@@ -8,6 +8,9 @@
 --   5. 爬虫数据用 *_source 标记来源，便于回溯
 -- ============================================================
 
+-- 显式声明字符集:避免客户端用 latin1 解析中文(表注释/字段注释)导致报错
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS jobhunter
     DEFAULT CHARACTER SET utf8mb4
     DEFAULT COLLATE utf8mb4_unicode_ci;
@@ -223,19 +226,18 @@ CREATE TABLE IF NOT EXISTS `job_skills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='职位-技能关联';
 
 -- ---------- 4. 用户行为 & 业务 ----------
--- 用户-职位关系(点击/收藏/外站投递反馈)
+-- 用户-职位关系(收藏/外站投递反馈)
 -- 本平台不代投，仅提供 jobs.source_url 跳转；applied 之后状态依赖用户手动反馈
 CREATE TABLE IF NOT EXISTS `applications` (
     `id`                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `user_id`            BIGINT UNSIGNED NOT NULL,
     `job_id`             BIGINT UNSIGNED NOT NULL,
     `resume_id`          BIGINT UNSIGNED DEFAULT NULL COMMENT '跳转时参考的简历',
-    `status`             VARCHAR(16) NOT NULL DEFAULT 'clicked' COMMENT 'clicked/favorited/submitted/interviewed/offer/rejected',
+    `status`             VARCHAR(16) DEFAULT NULL COMMENT '投递进度(可空,表示还没投递): submitted/interviewed/offer/rejected',
+    `is_favorited`       TINYINT(1) NOT NULL DEFAULT 0 COMMENT '收藏维度(独立): 0=未收藏 1=已收藏, 与status互不影响',
     `match_score`        DECIMAL(5,2) DEFAULT NULL COMMENT '推荐时的匹配分0-100',
-    `redirected_at`      DATETIME DEFAULT NULL COMMENT '点击跳转到外站的时间',
     `submitted_at`       DATETIME DEFAULT NULL COMMENT '用户反馈已在外站投递的时间',
     `feedback_at`        DATETIME DEFAULT NULL COMMENT '用户最近一次手动反馈时间',
-    `click_count`        INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '跳转点击次数(热度统计)',
     `external_source`    VARCHAR(32)  DEFAULT NULL COMMENT '实际投递来源 boss/liepin/official',
     `note`               VARCHAR(512) DEFAULT NULL COMMENT '用户备注(面试进度/HR联系等)',
     `is_deleted`         TINYINT(1) NOT NULL DEFAULT 0,
@@ -244,8 +246,9 @@ CREATE TABLE IF NOT EXISTS `applications` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_job` (`user_id`,`job_id`),
     KEY `idx_app_user_status` (`user_id`,`status`),
+    KEY `idx_app_favorite` (`user_id`,`is_favorited`),
     KEY `idx_app_job` (`job_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户-职位关系(点击/收藏/外站投递反馈)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户-职位关系(收藏/外站投递反馈)';
 
 -- 推荐记录：每次推荐生成一条，方便做A/B和效果回溯
 CREATE TABLE IF NOT EXISTS `recommendations` (

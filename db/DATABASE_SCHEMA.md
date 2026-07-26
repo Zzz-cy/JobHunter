@@ -372,12 +372,11 @@ match_score = Σ (skill.weight × user.proficiency × time_decay(years))
 | `user_id` | BIGINT UNSIGNED | NO | — | MUL | 用户 ID |
 | `job_id` | BIGINT UNSIGNED | NO | — | MUL | 职位 ID |
 | `resume_id` | BIGINT UNSIGNED | YES | NULL | — | 跳转时参考的简历（用户对比推荐分时使用） |
-| `status` | VARCHAR(16) | NO | 'clicked' | — | 状态机：`clicked` / `favorited` / `submitted` / `interviewed` / `offer` / `rejected` |
+| `status` | VARCHAR(16) | YES | NULL | MUL | **投递进度维度**(可空)：`NULL`(还没投递) / `submitted` / `interviewed` / `offer` / `rejected` |
+| `is_favorited` | TINYINT(1) | NO | 0 | MUL | **收藏维度**(独立布尔)：0=未收藏，1=已收藏。与 `status` 互不影响 |
 | `match_score` | DECIMAL(5,2) | YES | NULL | — | 推荐时的匹配分（0-100），用于效果分析 |
-| `redirected_at` | DATETIME | YES | NULL | — | 点击跳转到外站的时间（平台可自动记录） |
 | `submitted_at` | DATETIME | YES | NULL | — | 用户反馈已在外站投递的时间 |
 | `feedback_at` | DATETIME | YES | NULL | — | 用户最近一次手动反馈时间（催回访用） |
-| `click_count` | INT UNSIGNED | NO | 0 | — | 跳转点击次数，用于职位热度/重复访问统计 |
 | `external_source` | VARCHAR(32) | YES | NULL | — | 用户实际投递来源 `boss` / `liepin` / `official` |
 | `note` | VARCHAR(512) | YES | NULL | — | 用户备注（面试进度、HR 联系方式、薪资沟通等） |
 | `is_deleted` | TINYINT(1) | NO | 0 | — | 软删除 |
@@ -386,29 +385,43 @@ match_score = Σ (skill.weight × user.proficiency × time_decay(years))
 
 **索引说明**：
 - `uk_user_job`：(user_id, job_id) 联合唯一，**同一用户对同一职位只一条记录**，状态机演进
-- `idx_app_user_status`：(user_id, status) 复合索引，覆盖"我的收藏""我的投递反馈"高频查询
+- `idx_app_user_status`：(user_id, status) 复合索引，覆盖"我的投递反馈"高频查询
+- `idx_app_favorite`：(user_id, is_favorited) 复合索引，覆盖"我的收藏"高频查询
 - `idx_app_job`：反向查询"某职位被多少人点击/投递"，用于热度排序
 
-**状态机演进示例**：
+**⚠️ 双字段状态设计（重要）**：
+
+为什么把"收藏"从 `status` 拆出来独立成 `is_favorited`？因为收藏和投递是**两个独立维度**，能同时为真（"既收藏又投递了"）。用单个 status 字段会导致"收藏后投递，收藏状态被覆盖丢失"的 bug。
+
+设计原则：
+- **互斥状态** → 用一个字段多值（status：submitted/interviewed/offer/rejected）
+- **独立维度** → 各自一个布尔字段（is_favorited / is_deleted）
+- **可空状态** → status 允许 NULL，表示"还没投递"（可能是纯收藏）
+
+**投递进度状态机演进**（status 字段，互斥，可空）：
 ```
-clicked → favorited → submitted → interviewed → offer
-         (自动)        (用户反馈)    (用户反馈)    (用户反馈)
-                                            ↘ rejected (用户反馈)
+NULL → submitted → interviewed → offer
+(没投)  (用户反馈)   (用户反馈)    (用户反馈)
+                          ↘ rejected (用户反馈)
 ```
+
+注意：
+- 不再有 `clicked` 状态（原"点过详情但没投"的记录是垃圾数据，已废弃）
+- `status=NULL` + `is_favorited=1` = 纯收藏
+- `status='submitted'` + `is_favorited=1` = 投递过 + 也收藏了（组合自由）
 
 **平台可自动感知 vs 用户手动反馈**：
 
-| 状态 | 自动感知 | 说明 |
+| 状态/动作 | 自动感知 | 说明 |
 |---|---|---|
-| `clicked` | ✅ | 用户点击"去投递"按钮跳转时自动记录 |
-| `favorited` | ✅ | 平台内收藏动作 |
-| `submitted` | ❌ | 用户回站手动标记"已在外站投递" |
+| `is_favorited=1` | ✅ | 平台内收藏动作（独立于投递进度） |
+| `submitted` | ✅ | 用户点击"去投递"跳转时自动记录 |
 | `interviewed` | ❌ | 用户反馈进入面试 |
 | `offer` / `rejected` | ❌ | 用户反馈最终结果 |
 
 **核心 UX 设计**：定期引导用户回访"上次跳转的 XX 公司职位，投递结果如何？"，是提升此表数据完整性的关键。
 
-**与 `recommendations` 的关系**：推荐效果闭环 = `recommendations.score`（系统视角）↔ `applications.clicked/submitted`（用户视角）。
+**与 `recommendations` 的关系**：推荐效果闭环 = `recommendations.score`（系统视角）↔ `applications.submitted`（用户视角）。
 
 ---
 
@@ -538,7 +551,7 @@ clicked → favorited → submitted → interviewed → offer
 |---|---|---|
 | `resumes` | `parse_status` | pending → parsing → done / failed |
 | `jobs` | `status` | active → closed / expired |
-| `applications` | `status` | clicked → favorited → submitted → interviewed → offer / rejected（submitted 后状态依赖用户手动反馈） |
+| `applications` | `status` | NULL → submitted → interviewed → offer / rejected（点"去投递"自动记 submitted；后续状态依赖用户手动反馈；收藏单独走 `is_favorited`） |
 | `crawl_tasks` | `status` | pending → running → success / failed |
 
 ### 5.3 软删除约定

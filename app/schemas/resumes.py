@@ -17,7 +17,6 @@ class ResumeUploadOut(ORMOut):
     """简历上传成功后的返回。
 
     上传阶段只返回 id / 状态 / 文件地址,
-    详细字段(name/skills/experiences)等解析完才有。
     """
 
     id: int

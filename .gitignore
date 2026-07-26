@@ -62,3 +62,10 @@ media/
 # OS
 .DS_Store
 Thumbs.db
+
+# 临时调试脚本(本地测试数据库/service 用, 测完即删, 别提交)
+# 命名约定: test_*.py 或 scratch_*.py
+test_query.py
+test_*.py
+scratch_*.py
+tmp_*.py

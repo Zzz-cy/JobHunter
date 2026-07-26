@@ -46,5 +46,22 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
         back_populates="company", lazy="selectin",
     )
 
+    # ---------- 关系(行业字典, 只读) ----------
+    # 通过 industry_code 关联到 industries 字典表, viewonly=True 表示只读
+    # (字典表不该被业务侧修改), lazy="selectin" 保证 async 下访问不报错。
+    industry: Mapped["Industry | None"] = relationship(  # noqa: F821
+        primaryjoin="foreign(Company.industry_code) == Industry.code",
+        viewonly=True,
+        lazy="selectin",
+    )
+
+    # ---------- 派生属性(给 schema 用) ----------
+    # Pydantic v2 的 from_attributes 模式不能跨 relationship 取值,
+    # 在 ORM 上加 @property 桥接, schema 用普通字段就能取到 industry.name。
+    @property
+    def industry_name(self) -> str | None:
+        """行业中文名, 从关联的 Industry 字典表取。"""
+        return self.industry.name if self.industry else None
+
     def __repr__(self) -> str:
         return f"<Company(id={self.id}, name={self.name!r}, source={self.source!r})>"

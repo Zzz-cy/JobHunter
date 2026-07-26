@@ -2,6 +2,8 @@
 -- JobHunter 假数据 - 用于前端开发调试
 -- 覆盖: 公司 / 职位 / 职位技能 / 简历 / 简历技能 / 投递 / 推荐
 -- ============================================================
+-- 显式声明字符集:避免客户端用 latin1 解析中文导致 "Data too long" 报错
+SET NAMES utf8mb4;
 USE jobhunter;
 
 -- 清空相关表(保留字典和测试账号)
@@ -338,19 +340,43 @@ INSERT INTO `resume_educations` (`resume_id`, `school`, `major`, `degree`, `star
 -- ============================================================
 -- 8. 用户行为数据 (applications)
 -- ============================================================
-INSERT INTO `applications` (`user_id`, `job_id`, `resume_id`, `status`, `match_score`, `redirected_at`, `submitted_at`, `feedback_at`, `click_count`, `external_source`, `note`) VALUES
+-- 字段顺序: user_id, job_id, resume_id, status, is_favorited, match_score,
+--           submitted_at, feedback_at, external_source, note
+--
+-- 设计原则(收藏和投递彻底解耦):
+--   - status 表示"投递进度",可空(NULL=还没投递)
+--       NULL         = 没投递(可能是纯收藏)
+--       submitted    = 已投递
+--       interviewed  = 面试中
+--       offer        = 拿到 offer
+--       rejected     = 被拒
+--   - is_favorited 是独立的收藏维度(0/1),跟 status 互不影响
+--   - 两种维度组合:
+--       收藏但没投递: status=NULL,    is_favorited=1
+--       投递了没收藏: status='submitted', is_favorited=0
+--       投递+收藏:    status='submitted', is_favorited=1
+--   - 不再有 clicked 状态(原"点过详情但没投"的记录是垃圾数据,已废弃)
+INSERT INTO `applications` (`user_id`, `job_id`, `resume_id`, `status`, `is_favorited`, `match_score`, `submitted_at`, `feedback_at`, `external_source`, `note`) VALUES
 
 -- 求职者A 对几个职位的交互
-(2, 1, 1, 'favorited', 92.30, '2026-06-12 10:30:00', NULL, '2026-06-12 10:30:00', 2, 'boss',
- '字节的 Python 后端,匹配度非常高,准备投递'),
-(2, 5, 1, 'submitted', 78.50, '2026-06-11 14:20:00', '2026-06-11 15:00:00', '2026-06-11 15:00:00', 1, 'boss',
+-- 字节 Python 后端: 收藏了,但还没投递(纯收藏)
+(2, 1, 1, NULL, 1, 92.30, NULL, NULL, NULL,
+ '字节的 Python 后端,匹配度非常高,收藏了准备投递'),
+
+-- 腾讯前端: 已投递,没收藏
+(2, 5, 1, 'submitted', 0, 78.50, '2026-06-11 15:00:00', '2026-06-11 15:00:00', 'boss',
  '已通过 Boss 投递,等 HR 联系'),
-(2, 13, 1, 'clicked', 85.00, '2026-06-10 09:15:00', NULL, NULL, 3, NULL, NULL),
-(2, 11, 1, 'interviewed', 76.00, '2026-06-08 16:00:00', '2026-06-09 10:00:00', '2026-06-12 11:00:00', 1, 'liepin',
+
+-- 京东全栈: 已投递且进入面试
+(2, 11, 1, 'interviewed', 0, 76.00, '2026-06-09 10:00:00', '2026-06-12 11:00:00', 'liepin',
  '京东全栈岗,一面已过,约二面中'),
-(2, 7, 2, 'rejected', 65.00, '2026-06-05 11:00:00', '2026-06-05 14:00:00', '2026-06-10 18:00:00', 1, 'liepin',
+
+-- 美团大数据: 投递后被拒
+(2, 7, 2, 'rejected', 0, 65.00, '2026-06-05 14:00:00', '2026-06-10 18:00:00', 'liepin',
  '美团大数据岗,经验不够被拒'),
-(2, 12, 2, 'clicked', 88.50, '2026-06-13 09:00:00', NULL, NULL, 1, NULL, NULL);
+
+-- 小红书 Python 后端: 收藏了,还没投递(纯收藏)
+(2, 12, 2, NULL, 1, 88.50, NULL, NULL, NULL, NULL);
 
 
 -- ============================================================
