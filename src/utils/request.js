@@ -51,3 +51,9 @@ request.interceptors.response.use(
 )
 
 export default request
+
+// 具名导出:兼容 import { get, post } from '@/utils/request' 写法
+export const get = (url, config) => request.get(url, config)
+export const post = (url, data, config) => request.post(url, data, config)
+export const put = (url, data, config) => request.put(url, data, config)
+export const del = (url, config) => request.delete(url, config)

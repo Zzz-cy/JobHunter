@@ -41,8 +41,14 @@ const routes = [
       {
         path: 'recommend',
         name: 'Recommend',
-        component: () => import('@/views/Recommend.vue'),
-        meta: { title: '智能推荐', requiresAuth: true }
+        component: () => import('@/views/ChatView.vue'),
+        meta: { title: 'AI 求职顾问', requiresAuth: true }
+      },
+      {
+        path: 'admin',
+        name: 'Admin',
+        component: () => import('@/views/AdminView.vue'),
+        meta: { title: 'Agent 监控后台', requiresAuth: true }
       },
       {
         path: 'resume',

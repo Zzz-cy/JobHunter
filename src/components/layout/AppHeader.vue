@@ -25,7 +25,11 @@
         </el-menu-item>
         <el-menu-item index="/recommend">
           <el-icon><MagicStick /></el-icon>
-          <span>智能推荐</span>
+          <span>AI 求职顾问</span>
+        </el-menu-item>
+        <el-menu-item index="/admin">
+          <el-icon><DataBoard /></el-icon>
+          <span>Agent 监控后台</span>
         </el-menu-item>
         <el-menu-item index="/resume">
           <el-icon><Document /></el-icon>
@@ -83,8 +87,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-// 登录态:必须用 storeToRefs 包裹,否则解构后失去响应式
-// (登录/登出后右上角不会自动变化,要刷新才生效)
+// 登录态
 const { isLoggedIn, userInfo, username } = storeToRefs(userStore)
 
 // 高亮当前菜单
