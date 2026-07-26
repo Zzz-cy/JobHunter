@@ -7,7 +7,7 @@
     @click="$emit('click', skill)"
   >
     <el-icon v-if="skill.is_hot" color="#f56c6c"><Star /></el-icon>
-    {{ skill.name }}
+    {{ skill.skill_name }}
     <span v-if="skill.proficiency" class="skill-level">L{{ skill.proficiency }}</span>
     <span v-if="skill.years" class="skill-years">{{ skill.years }}年</span>
   </el-tag>

@@ -96,17 +96,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import JobCard from '@/components/common/JobCard.vue'
-// import { useJobStore } from '@/stores/job'
+import { useJobStore } from '@/stores/job'
 
 const router = useRouter()
-// const jobStore = useJobStore()
+const jobStore = useJobStore()
 
 const keyword = ref('')
 
-const hotKeywords = ['Python 后端', '前端工程师', '数据分析师', 'Java 开发', '产品经理', 'AI 算法']
+// 热门搜索词: 从 store 读, computed 自动跟踪
+const hotKeywords = computed(() => jobStore.hots || [])
 
 const stats = ref([
   { label: '在招职位', value: '0' },
@@ -159,21 +160,20 @@ const goJobDetail = (job) => {
   if (job.id) router.push(`/jobs/${job.id}`)
 }
 
-// TODO: 组件挂载时加载统计数据和热门职位
-// import { onMounted } from 'vue'
-// onMounted(async () => {
-//   const [statRes, hotRes] = await Promise.all([
-//     request.get('/stats/overview'),
-//     request.get('/jobs/hot', { params: { limit: 6 } })
-//   ])
-//   stats.value = [
-//     { label: '在招职位', value: statRes.jobCount },
-//     { label: '入驻公司', value: statRes.companyCount },
-//     { label: '技能字典', value: statRes.skillCount },
-//     { label: '行业覆盖', value: statRes.industryCount }
-//   ]
-//   hotJobs.value = hotRes.list
-// })
+onMounted(async () => {
+  jobStore.getHots()
+  // const [statRes, hotRes] = await Promise.all([
+  //   request.get('/stats/overview'),
+  //   request.get('/jobs/hot', { params: { limit: 6 } })
+  // ])
+  // stats.value = [
+  //   { label: '在招职位', value: statRes.jobCount },
+  //   { label: '入驻公司', value: statRes.companyCount },
+  //   { label: '技能字典', value: statRes.skillCount },
+  //   { label: '行业覆盖', value: statRes.industryCount }
+  // ]
+  // hotJobs.value = hotRes.list
+})
 </script>
 
 <style scoped>

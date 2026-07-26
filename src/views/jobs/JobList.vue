@@ -2,15 +2,36 @@
   <div class="job-list-page page-container">
     <!-- 搜索栏 -->
     <el-card class="search-card" shadow="never">
-      <el-input
-        v-model="filters.keyword"
-        placeholder="职位名 / 技能 / 公司"
-        size="large"
-        clearable
-        @keyup.enter="handleSearch"
-      >
-        <template #prefix><el-icon><Search /></el-icon></template>
-      </el-input>
+      <div class="search-row">
+        <el-input
+          v-model="filters.keyword"
+          placeholder="职位名 / 技能 / 公司"
+          size="large"
+          clearable
+          class="search-input"
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+
+        <!-- 右侧快捷入口:提醒用户有这两个功能 -->
+        <el-button
+          size="large"
+          plain
+          @click="goFavorites"
+        >
+          <el-icon><Star /></el-icon>
+          <span>我的收藏</span>
+        </el-button>
+        <el-button
+          size="large"
+          plain
+          @click="goApplications"
+        >
+          <el-icon><Document /></el-icon>
+          <span>求职进度</span>
+        </el-button>
+      </div>
 
       <div class="filter-row">
         <el-select v-model="filters.city" placeholder="城市" clearable style="width: 140px">
@@ -66,7 +87,7 @@
           <span class="result-count">
             共 <strong>{{ total }}</strong> 个职位
           </span>
-          <el-radio-group v-model="sortBy" size="small">
+          <el-radio-group v-model="sortBy" size="small" @change="handleSortChange">
             <el-radio-button label="default">综合</el-radio-button>
             <el-radio-button label="latest">最新</el-radio-button>
             <el-radio-button label="salary">薪资</el-radio-button>
@@ -95,13 +116,11 @@
         <div class="pagination" v-if="total > 0">
           <el-pagination
             v-model:current-page="filters.page"
-            v-model:page-size="filters.pageSize"
+            :page-size="10"
             :total="total"
-            :page-sizes="[10, 20, 50]"
-            layout="total, sizes, prev, pager, next, jumper"
+            layout="total, prev, pager, next, jumper"
             background
             @current-change="handleSearch"
-            @size-change="handleSearch"
           />
         </div>
       </div>
@@ -147,8 +166,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Search, Star, Document } from '@element-plus/icons-vue'
 import JobCard from '@/components/common/JobCard.vue'
 import { useJobStore } from '@/stores/job'
 
@@ -170,34 +190,65 @@ const filters = reactive({
   salaryRange: '',
   source: '',
   page: 1,
-  pageSize: 20
+  pageSize: 10
 })
 
 const cityOptions = ['北京', '上海', '深圳', '广州', '杭州', '成都', '南京', '武汉', '西安', '苏州', '其他']
 const experienceOptions = ['应届', '1-3年', '3-5年', '5-10年', '10年以上', '不限']
 const educationOptions = ['大专', '本科', '硕士', '博士', '不限']
-const industryOptions = [
-  {
-    value: 'IT', label: '互联网/IT',
-    children: [
-      { value: 'IT-RD', label: '研发' },
-      { value: 'IT-DATA', label: '数据' },
-      { value: 'IT-PM', label: '产品' }
-    ]
-  },
-  {
-    value: 'FIN', label: '金融',
-    children: [{ value: 'FIN-BANK', label: '银行' }, { value: 'FIN-SEC', label: '证券' }]
-  }
-]
-const hotKeywords = ['Python', 'Java', '前端', '数据分析', '产品经理', '运营']
+
+// 把后端返回的扁平行业列表, 转成 el-cascader 需要的树状结构
+const buildIndustryTree = (flatList) => {
+  // 1. 先把每个节点转成 {value, label}, 并建一个 id → 节点 的映射
+  const nodeMap = {}
+  flatList.forEach(item => {
+    nodeMap[item.id] = {
+      value: item.code,
+      label: item.name,
+      children: []
+    }
+  })
+  // 2. 遍历一遍, 把子节点塞到父节点的 children 里
+  const tree = []
+  flatList.forEach(item => {
+    if (item.parent_id === null) {
+      // 一级行业, 直接放进结果数组
+      tree.push(nodeMap[item.id])
+    } else {
+      // 二级行业, 塞到对应的父节点下
+      const parent = nodeMap[item.parent_id]
+      if (parent) {
+        parent.children.push(nodeMap[item.id])
+      }
+    }
+  })
+  // 3. 清理: 没有子节点的, children 设为 undefined(级联不显示展开箭头)
+  tree.forEach(node => {
+    if (node.children.length === 0) {
+      delete node.children
+    }
+  })
+  return tree
+}
+
+const industryOptions = computed(() => buildIndustryTree(jobStore.industries || []))
+
+// 热门搜索词
+const hotKeywords = computed(() => jobStore.hots || [])
 
 const handleSearch = async () => {
   // 把过滤条件同步到 store(薪资范围拆分等转换逻辑由 store 负责)
   jobStore.setQueryParams(filters)
+  jobStore.queryParams.sort = sortBy.value
   await jobStore.fetchJobList()
   jobList.value = jobStore.jobList
   total.value = jobStore.total
+}
+
+// 切换排序方式 = 重新搜索(回第 1 页), 复用 handleSearch 避免代码重复
+const handleSortChange = () => {
+  filters.page = 1
+  handleSearch()
 }
 
 const handleReset = () => {
@@ -223,12 +274,23 @@ const goJobDetail = (job) => {
   if (job.id) router.push(`/jobs/${job.id}`)
 }
 
+// 跳转到个人中心的"我的收藏"(左侧菜单 tab: favorites)
+const goFavorites = () => router.push({ path: '/profile', query: { tab: 'favorites' } })
+
+// 跳转到个人中心的"求职进度"(左侧菜单 tab: jobs)
+const goApplications = () => router.push({ path: '/profile', query: { tab: 'jobs' } })
+
 const goResume = () => router.push('/resume')
 const goRecommend = () => router.push('/recommend')
 
 import { onMounted } from 'vue'
-onMounted(() => {
-  handleSearch()
+onMounted(async () => {
+  // 并行加载: 行业字典 + 职位列表(互不依赖, 用 Promise.all 提速)
+  await Promise.all([
+    jobStore.getIndustries(),
+    jobStore.getHots(),
+    handleSearch()
+  ])
 })
 </script>
 
@@ -236,6 +298,16 @@ onMounted(() => {
 .search-card {
   margin-bottom: 16px;
   padding: 12px;
+}
+
+/* 搜索框 + 右侧快捷入口同一行 */
+.search-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.search-input {
+  flex: 1;   /* 搜索框占满剩余空间 */
 }
 
 .filter-row {

@@ -43,30 +43,25 @@
           </template>
 
           <el-tabs v-model="jobStatus" @tab-change="handleStatusChange">
-            <el-tab-pane label="点击过" name="clicked" />
-            <el-tab-pane label="已收藏" name="favorited" />
             <el-tab-pane label="已投递" name="submitted" />
             <el-tab-pane label="面试中" name="interviewed" />
             <el-tab-pane label="Offer" name="offer" />
             <el-tab-pane label="未通过" name="rejected" />
           </el-tabs>
 
-          <el-empty v-if="!applications.length" description="暂无求职进度记录" />
+          <el-empty v-if="!filteredApplications.length" description="该状态下暂无记录" />
 
           <div v-else class="app-list">
-            <div v-for="app in applications" :key="app.id" class="app-item">
+            <div v-for="app in filteredApplications" :key="app.id" class="app-item">
               <div class="app-main" @click="goJobDetail(app)">
-                <div class="app-title">{{ app.job_title || app.job?.title }}</div>
+                <div class="app-title">{{ app.job?.title }}</div>
                 <div class="app-meta">
-                  {{ app.company_name || app.job?.company_name }}
+                  {{ app.job?.company.name}}
                   · {{ app.job?.city }}
-                  · {{ app.job?.salary_text }}
+                  · {{ formatSalary(app.job) }}
                 </div>
-                <div class="app-time">
-                  跳转时间: {{ formatTime(app.redirected_at) }}
-                  <span v-if="app.submitted_at">
-                    · 投递: {{ formatTime(app.submitted_at) }}
-                  </span>
+                <div class="app-time" v-if="app.submitted_at">
+                  投递时间: {{ formatTime(app.submitted_at) }}
                 </div>
                 <div class="app-note" v-if="app.note">
                   <el-icon><EditPen /></el-icon>
@@ -80,8 +75,6 @@
                   style="width: 110px"
                   @change="updateStatus(app)"
                 >
-                  <el-option label="点击过" value="clicked" />
-                  <el-option label="已收藏" value="favorited" />
                   <el-option label="已投递" value="submitted" />
                   <el-option label="面试中" value="interviewed" />
                   <el-option label="Offer" value="offer" />
@@ -92,6 +85,9 @@
                 </el-button>
                 <el-button size="small" text @click="goApply(app)">
                   <el-icon><Link /></el-icon>
+                </el-button>
+                <el-button size="small" text type="danger" @click="deleteApplication(app)">
+                  <el-icon><Delete /></el-icon>
                 </el-button>
               </div>
             </div>
@@ -108,13 +104,16 @@
 
           <el-empty v-if="!favoriteJobs.length" description="还没有收藏的职位" />
 
-          <div v-else>
-            <JobCard
-              v-for="job in favoriteJobs"
-              :key="job.id"
-              :job="job"
-              @click="goJobDetail(job)"
-            />
+          <div v-else class="favorite-list">
+            <div v-for="job in favoriteJobs" :key="job.id" class="favorite-item">
+              <JobCard :job="job" @click="goJobDetail(job)" />
+              <div class="favorite-actions">
+                <el-button size="small" type="danger" plain @click="unfavorite(job)">
+                  <el-icon><StarFilled /></el-icon>
+                  取消收藏
+                </el-button>
+              </div>
+            </div>
           </div>
         </el-card>
 
@@ -181,19 +180,29 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import JobCard from '@/components/common/JobCard.vue'
 import { useUserStore } from '@/stores/user'
+import { useJobStore } from '@/stores/job'
 import request from '@/utils/request'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+const jobStore = useJobStore()
 
-const activeTab = ref('jobs')
-const jobStatus = ref('clicked')
-const applications = ref([])
+const validTabs = ['jobs', 'favorites', 'settings']
+const activeTab = ref(validTabs.includes(route.query.tab) ? route.query.tab : 'jobs')
+const jobStatus = ref('submitted')
+const applications = ref([])         // 全部投递记录(从后端拉一次)
 const favoriteJobs = ref([])
+
+// 按当前 tab(submitted/interviewed/offer/rejected)过滤投递记录
+// 切 tab 时不用重新请求,这个 computed 自动重算
+const filteredApplications = computed(() => {
+  return applications.value.filter(a => a.status === jobStatus.value)
+})
 
 // 用户信息直接从 store 读(登录后/改资料后都会同步更新)
 const userInfo = computed(() => userStore.userInfo || {})
@@ -209,32 +218,69 @@ const settings = reactive({
 })
 
 const handleStatusChange = () => {
-  loadApplications()
+  // 切 tab 不用重新拉接口,本地 computed 过滤即可(数据量小,体验更快)
 }
 
 const loadApplications = async () => {
-  // TODO: 拉取求职进度列表
-  // const res = await request.get('/applications', {
-  //   params: { status: jobStatus.value, page: 1, pageSize: 50 }
-  // })
-  // applications.value = res.list
-  console.log('[TODO] loadApplications', jobStatus.value)
+  // 拉全部投递记录(不过滤 status),本地用 computed 按 tab 过滤
+  const res = await request.get('/user/applications')
+  applications.value = res
 }
 
 const loadFavorites = async () => {
-  // TODO: 拉取收藏列表
-  // const res = await request.get('/applications/favorites')
-  // favoriteJobs.value = res.list
-  console.log('[TODO] loadFavorites')
+  favoriteJobs.value = await request.get('/user/applications/favorites')
+}
+
+// 删除求职进度记录
+const deleteApplication = async (app) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条求职进度吗?', '提示', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消'
+    })
+    const jobId = app.job?.id || app.job_id
+    await request.delete(`/user/delete_application/${jobId}`)
+    // 从本地列表移除(不用重新拉接口,体验更快)
+    applications.value = applications.value.filter(a => (a.job?.id || a.job_id) !== jobId)
+    // ★ 同步更新 store 的 appliedIds
+    jobStore.appliedIds.delete(Number(jobId))
+    ElMessage.success('已删除')
+  } catch (err) {
+    if (err !== 'cancel' && err?.message) ElMessage.error(err.message)
+  }
+}
+
+// 取消收藏(用户在我的收藏页点取消收藏按钮)
+const unfavorite = async (job) => {
+  try {
+    await ElMessageBox.confirm(`确定取消收藏「${job.title}」吗?`, '提示', {
+      type: 'warning',
+      confirmButtonText: '取消收藏',
+      cancelButtonText: '保留'
+    })
+    await request.delete(`/jobs/applications/${job.id}/favorite`)
+    // 从本地列表移除
+    favoriteJobs.value = favoriteJobs.value.filter(j => j.id !== job.id)
+    // ★ 同步更新 store 的 favoriteIds
+    jobStore.favoriteIds.delete(Number(job.id))
+    ElMessage.success('已取消收藏')
+  } catch (err) {
+    if (err !== 'cancel' && err?.message) ElMessage.error(err.message)
+  }
 }
 
 const updateStatus = async (app) => {
-  // TODO: 更新 application 状态
-  // await request.put(`/applications/${app.id}`, {
-  //   status: app.status,
-  //   feedback_at: new Date()
-  // })
-  ElMessage.success('状态已更新')
+  try {
+    const jobId = app.job?.id || app.job_id
+    await request.put('/user/update_application', {
+      job_id: jobId,
+      status: app.status
+    })
+    ElMessage.success('状态已更新')
+  } catch (err) {
+    if (err?.message) ElMessage.error(err.message)
+  }
 }
 
 const editNote = async (app) => {
@@ -243,15 +289,23 @@ const editNote = async (app) => {
       inputValue: app.note || '',
       inputType: 'textarea'
     })
-    // TODO: 保存备注
-    // await request.put(`/applications/${app.id}`, { note: value })
+    // 调"修改求职进度"接口(跟 updateStatus 共用,同时支持 status/note)
+    const jobId = app.job?.id || app.job_id
+    await request.put('/user/update_application', {
+      job_id: jobId,
+      note: value
+    })
+    // 同步本地状态
     app.note = value
     ElMessage.success('备注已保存')
-  } catch {}
+  } catch (err) {
+    // 用户点取消会 reject,不算错误
+    if (err !== 'cancel' && err?.message) ElMessage.error(err.message)
+  }
 }
 
 const goApply = (app) => {
-  const url = app.source_url || app.job?.source_url
+  const url = app.job?.source_url
   if (!url) {
     ElMessage.warning('未找到原站链接')
     return
@@ -260,13 +314,13 @@ const goApply = (app) => {
 }
 
 const goJobDetail = (app) => {
-  const jobId = app.job_id || app.job?.id
+  const jobId = app.job?.id
   if (jobId) router.push(`/jobs/${jobId}`)
 }
 
 const settingsFormRef = ref(null)
 
-// 保存设置:统一表单提交,根据是否填密码决定调哪个接口
+// 保存设置:统一表单提交
 const saveSettings = async () => {
   if (!settingsFormRef.value) return
   try {
@@ -351,6 +405,16 @@ const settingsRules = {
 const formatTime = (t) => {
   if (!t) return '-'
   return new Date(t).toLocaleString('zh-CN')
+}
+
+// 把薪资 min/max(单位 K)拼成展示文本
+const formatSalary = (job) => {
+  if (!job) return ''
+  const min = job.salary_min
+  const max = job.salary_max
+  if (min == null && max == null) return '薪资面议'
+  if (min != null && max != null) return `${min}-${max}K`
+  return `${min ?? max}K`
 }
 
 import { onMounted } from 'vue'
@@ -486,6 +550,20 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 我的收藏列表:每个卡片下面带一个取消收藏按钮 */
+.favorite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.favorite-item {
+  position: relative;
+}
+.favorite-actions {
+  margin-top: 8px;
+  text-align: right;
 }
 
 .danger-zone h4 {

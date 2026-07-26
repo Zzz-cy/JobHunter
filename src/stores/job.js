@@ -10,7 +10,10 @@ export const useJobStore = defineStore('job', {
 
     // 当前职位详情
     currentJob: null,
-
+    //行业字典
+    industries: null,
+    //热门搜索词
+    hots: [],
     // 查询条件
     queryParams: {
       keyword: '',
@@ -21,16 +24,23 @@ export const useJobStore = defineStore('job', {
       education: '',
       industry: '',
       source: '',
+      sort: 'default',      // 排序方式: default(综合) / latest(最新) / salary(薪资)
       page: 1,
-      pageSize: 20
+      pageSize: 10          // 固定每页 10 条(去掉用户切换, 避免 size-change 时序坑)
     },
 
     // 收藏的职位 id 集合
-    favoriteIds: new Set()
+    favoriteIds: new Set(),
+
+    // 已投递的职位 id 集合(用户点过"标记已投递")
+    appliedIds: new Set(),
+    favoritesLoaded: false,   // 标记: 收藏列表是否已加载过(避免重复请求)
+    appliedLoaded: false      // 标记: 投递列表是否已加载过
   }),
 
   getters: {
-    isFavorited: (state) => (jobId) => state.favoriteIds.has(jobId)
+    isFavorited: (state) => (jobId) => state.favoriteIds.has(jobId),
+    isApplied: (state) => (jobId) => state.appliedIds.has(jobId)
   },
 
   actions: {
@@ -62,46 +72,51 @@ export const useJobStore = defineStore('job', {
 
     // 获取职位详情
     async fetchJobDetail(id) {
-      // TODO: 调用后端接口
-      // const res = await request.get(`/jobs/${id}`)
-      // this.currentJob = res
-      console.log('[TODO] fetchJobDetail', id)
+      const res = await request.get(`/jobs/${id}`)
+      this.currentJob = res
     },
 
-    // 收藏/取消收藏
+    //获取行业字典
+    async getIndustries(){
+      this.industries = await request.get('/jobs/industries')
+    },
+
+    //获取热门搜索词
+    async getHots(){
+      this.hots = await request.get('/jobs/hot-keywords')
+    },
+
+    // 从后端加载我收藏的职位 id 列表(进详情页时调一次)
+    async loadFavoriteIds() {
+      if (this.favoritesLoaded) return    // 已加载过就不重复请求
+      const ids = await request.get('/jobs/applications/favorite-ids')
+      this.favoriteIds = new Set(ids)
+      this.favoritesLoaded = true
+    },
+
+    // 从后端加载我已投递的职位 id 列表(进详情页时调一次)
+    async loadAppliedIds() {
+      if (this.appliedLoaded) return
+      const ids = await request.get('/jobs/applications/applied-ids')
+      this.appliedIds = new Set(ids)
+      this.appliedLoaded = true
+    },
+
+    // 收藏/取消收藏(jobId 统一转 Number, 和后端返回的数字 id 对齐)
     async toggleFavorite(jobId) {
-      // TODO: 调用后端收藏接口
-      // if (this.favoriteIds.has(jobId)) {
-      //   await request.delete(`/applications/${jobId}/favorite`)
-      //   this.favoriteIds.delete(jobId)
-      // } else {
-      //   await request.post(`/applications/${jobId}/favorite`)
-      //   this.favoriteIds.add(jobId)
-      // }
-      console.log('[TODO] toggleFavorite', jobId)
-    },
-
-    // 记录跳转点击
-    async recordClick(jobId) {
-      // TODO: 调用后端记录点击事件
-      // await request.post('/applications', { jobId, status: 'clicked' })
-      console.log('[TODO] recordClick', jobId)
-    },
-
-    // 重置查询条件
-    resetQuery() {
-      this.queryParams = {
-        keyword: '',
-        city: '',
-        salaryMin: null,
-        salaryMax: null,
-        experience: '',
-        education: '',
-        industry: '',
-        source: '',
-        page: 1,
-        pageSize: 20
+      const id = Number(jobId)
+      if (this.favoriteIds.has(id)) {
+        await request.delete(`/jobs/applications/${id}/favorite`)
+        this.favoriteIds.delete(id)
+      } else {
+        await request.post(`/jobs/applications/${id}/favorite`)
+        this.favoriteIds.add(id)
       }
-    }
+    },
+
+    // (已删除 recordClick)
+    // 原逻辑:点职位详情就调 POST /jobs/applications/{id}/click 存 clicked 记录
+    // 问题:会产生大量"点过但没投"的垃圾数据,污染求职进度列表
+    // 改进:点击详情不再存记录;真正的投递行为才记录(submitted/interviewed/...)
   }
 })
