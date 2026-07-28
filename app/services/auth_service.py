@@ -87,6 +87,8 @@ async def login(user: LoginSchema, db: AsyncSession):
 
     return LoginOut(
         # jwt,默认一天过期
-        token=create_access_token(data={"sub": existing.user_code}),
+        # sub 存数字 user.id(数据库主键), 便于跨服务统一用户标识
+        # (LLM 服务也用数字 user_id, 两边类型一致才能正确识别用户)
+        token=create_access_token(data={"sub": str(existing.id)}),
         user=user_out
     )

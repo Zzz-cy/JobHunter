@@ -84,16 +84,17 @@ async def get_current_user(
     )
     try:
         payload = decode_access_token(token)
-        # sub 存的是登录时签发的 user_code（形如 U2026070746668），不是数字 id
-        user_code = payload.get("sub")
-        if not user_code:
+        # sub 存的是登录时签发的 user.id(数字主键, 已转成字符串)
+        # 便于跨服务统一用户标识(LLM 服务也用数字 user_id)
+        user_id = payload.get("sub")
+        if not user_id:
             raise credentials_exception
     except (JWTError, ValueError):
         # JWTError: 令牌过期/签名无效/格式错误
         # ValueError: 万一 payload 解析出来 sub 是意料之外的类型(防御性兜底)
         raise credentials_exception
 
-    user = await db.scalar(select(User).where(User.user_code == user_code))
+    user = await db.scalar(select(User).where(User.id == int(user_id)))
     if user is None:
         raise credentials_exception
     return user

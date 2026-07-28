@@ -21,6 +21,17 @@ PyMySQL==1.1.1           # 同步驱动(脚本/迁移用)
 # ---------- Elasticsearch ----------
 elasticsearch==8.15.1
 
+# ---------- 知识图谱 Neo4j ----------
+# py2neo: Pythonic 客户端(开发期/MVP 用, 上手快)
+# neo4j:  官方驱动(支持 async, 生产环境推荐, 性能更好)
+py2neo==2021.2.4
+neo4j==5.25.0
+
+# ---------- 向量数据库(RAG/语义匹配) ----------
+# Windows 安装注意: chroma-hnswlib 需要 C++ 编译, 用预编译包安装:
+#   pip install --only-binary :all: chromadb
+chromadb
+
 # ---------- 认证 ----------
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
