@@ -83,11 +83,11 @@ const autoRefreshTabs = ['overview', 'agents', 'llm']
 
 async function loadData() {
   try {
-    const m = await get('/api/v1/admin/metrics')
+    const m = await get('/v1/admin/metrics')
     if (m) metricsData.value = m
   } catch {}
   try {
-    const a = await get('/api/v1/admin/alerts')
+    const a = await get('/v1/admin/alerts')
     if (a) alertData.value = a
   } catch {}
 }

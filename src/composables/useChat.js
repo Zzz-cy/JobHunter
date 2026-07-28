@@ -124,6 +124,8 @@ export function useChat() {
         session_id: sessionId.value,
         industry,
         role,
+      }, {
+        timeout: 120000,  // chat 调大模型较慢,单独放宽到 120 秒(默认 15 秒会超时)
       })
 
       if (result.session_id) {

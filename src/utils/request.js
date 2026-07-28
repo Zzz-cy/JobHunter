@@ -28,6 +28,12 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const res = response.data
+    // 兼容 LLM 服务的裸数据接口(没有 code/message/data 外壳)
+    // 如 /agents/chat 直接返回 {answer, intent, tasks, session_id}
+    if (res && typeof res === 'object' && !('code' in res)) {
+      return res
+    }
+    // JobHunter 业务接口:统一 {code, message, data} 结构
     if (res.code !== 0) {
       ElMessage.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message || 'Error'))
