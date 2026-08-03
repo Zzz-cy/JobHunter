@@ -1,0 +1,115 @@
+# 岗能智绘 - Docker Compose 配置
+# 包含：FastAPI后端 + 前端 + Neo4j + ChromaDB + MySQL
+
+services:
+  # FastAPI 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llm_backend
+    ports:
+      - "5173:5173"
+    environment:
+      - DEBUG=${DEBUG:-false}
+      - HOST=0.0.0.0
+      - PORT=5173
+      - LLM_API_KEY=${ZHIPU_API_KEY}
+      - LLM_API_BASE=${ZHIPU_API_BASE:-https://open.bigmodel.cn/api/paas/v4}
+      - LLM_BASE_URL=${ZHIPU_API_BASE:-https://open.bigmodel.cn/api/paas/v4}
+      - LLM_MODEL=${ZHIPU_MODEL:-glm-4-flash}
+      - ZHIPU_API_KEY=${ZHIPU_API_KEY}
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER:-root}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-job_competency_2024}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-job_competency}
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-job_competency_2024}
+      - VECTOR_DB_PATH=/app/data/vector_db
+      - SQLITE_PATH=/app/data/job_competency.db
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  # 前端服务（Vue + Nginx，构建时打包）
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: llm_frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  # MySQL 数据库
+  mysql:
+    image: docker.1ms.run/library/mysql:8.0
+    container_name: llm_mysql
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD:-job_competency_2024}
+      - MYSQL_DATABASE=job_competency
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  # Neo4j 图数据库
+  neo4j:
+    image: docker.1ms.run/library/neo4j:5-community
+    container_name: llm_neo4j
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-job_competency_2024}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_server_memory_pagecache_size=256M
+      - NEO4J_server_memory_heap_initial__size=512M
+      - NEO4J_server_memory_heap_max__size=512M
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD:-job_competency_2024} 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app_network
+
+volumes:
+  backend_data:
+  backend_logs:
+  mysql_data:
+  neo4j_data:
+  neo4j_logs:
+
+networks:
+  app_network:
+    driver: bridge

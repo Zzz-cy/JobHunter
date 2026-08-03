@@ -1,0 +1,46 @@
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.egg
+
+# ==================== 环境变量（含API密钥，严禁提交）====================
+# 兜底写法: 匹配所有 .env*，然后单独把模板文件 .env.example 放回来
+.env
+.env.*
+!.env.example
+
+# ==================== 前端 ====================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ==================== 运行时数据 ====================
+data/
+logs/
+
+# 兜底: 数据文件不管放哪都不进 git
+# - csv: 历史数据回放(historical_jobs_replay.csv 等, 单个几MB)
+# - db / sqlite3: SQLite + Chroma 向量库
+# - db.bak: 数据库备份
+*.csv
+*.db
+*.db.bak.*
+*.sqlite3
+*.sqlite3-journal
+
+# ==================== 测试缓存 ====================
+.pytest_cache/
+*.pytest_cache
+
+# ==================== IDE ====================
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ==================== OS ====================
+.DS_Store
+Thumbs.db

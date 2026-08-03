@@ -1,0 +1,19 @@
+# Docker忽略文件
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+.env
+.git/
+.gitignore
+*.md
+!README.md
+tests/
+data/
+logs/

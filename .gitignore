@@ -1,0 +1,14 @@
+# 仓库根 .gitignore (llm_model 分支)
+# 子目录 llm_module/ 内有更详细的 Python .gitignore
+
+# 前端依赖(frontend 分支留下的, 不该进本分支)
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
