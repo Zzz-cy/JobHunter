@@ -186,6 +186,7 @@ import JobCard from '@/components/common/JobCard.vue'
 import { useUserStore } from '@/stores/user'
 import { useJobStore } from '@/stores/job'
 import request from '@/utils/request'
+import { formatSalary as formatSalaryUtil } from '@/utils/format'
 
 const router = useRouter()
 const route = useRoute()
@@ -407,14 +408,11 @@ const formatTime = (t) => {
   return new Date(t).toLocaleString('zh-CN')
 }
 
-// 把薪资 min/max(单位 K)拼成展示文本
+// 薪资展示: 复用统一的格式化工具(数据库存元, 展示转 K)
+// 包一层是为了兼容"job 不存在返回空串"的旧行为
 const formatSalary = (job) => {
   if (!job) return ''
-  const min = job.salary_min
-  const max = job.salary_max
-  if (min == null && max == null) return '薪资面议'
-  if (min != null && max != null) return `${min}-${max}K`
-  return `${min ?? max}K`
+  return formatSalaryUtil(job)
 }
 
 import { onMounted } from 'vue'

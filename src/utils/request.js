@@ -6,7 +6,7 @@ import router from '@/router'
 // 创建 axios 实例
 const request = axios.create({
   baseURL: '/api',
-  timeout: 15000,
+  timeout: 30000,   // 默认 30 秒(简历解析调大模型可能要 20-30 秒)
   headers: {
     'Content-Type': 'application/json'
   }

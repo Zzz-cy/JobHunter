@@ -210,6 +210,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import SkillTag from '@/components/common/SkillTag.vue'
 import { useResumeStore } from '@/stores/resume'
+import request from '@/utils/request'
 
 const router = useRouter()
 const resumeStore = useResumeStore()
@@ -290,9 +291,22 @@ const refreshList = async () => {
   resumeList.value = resumeStore.resumeList
 }
 
-const viewDetail = (r) => {
-  // TODO: 打开简历详情抽屉/弹窗
-  ElMessage.info(`查看简历 ${r.id}(待实现)`)
+const viewDetail = async (r) => {
+  // 带 token 请求文件二进制 → 转成 Blob URL → 新窗口预览
+  // 不能直接 window.open(url), 因为那样无法带 Authorization header
+  try {
+    const response = await request.get(`/resumes/${r.id}/file`, {
+      responseType: 'blob',   // 重要: 告诉 axios 这是二进制文件, 不是 JSON
+    })
+    // 拿到 Blob 后, 创建临时 URL 在新窗口打开
+    const blob = new Blob([response], { type: response.type })
+    const url = window.URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    // 延迟释放 URL(给浏览器时间加载)
+    setTimeout(() => window.URL.revokeObjectURL(url), 10000)
+  } catch (e) {
+    ElMessage.error('打开简历失败')
+  }
 }
 
 const useForRecommend = (r) => {
@@ -301,21 +315,18 @@ const useForRecommend = (r) => {
 
 const handleCommand = async (cmd, r) => {
   if (cmd === 'setPrimary') {
-    // TODO: 设为默认简历
-    // await request.put(`/resumes/${r.id}/primary`)
+    await request.put(`/resumes/${r.id}/primary`)
     ElMessage.success('已设为默认简历')
     await refreshList()
   } else if (cmd === 'reparse') {
-    // TODO: 重新解析
-    // await request.post(`/resumes/${r.id}/reparse`)
+    await request.post(`/resumes/${r.id}/reparse`)
     ElMessage.success('已提交重新解析')
   } else if (cmd === 'delete') {
     try {
       await ElMessageBox.confirm('确定要删除这份简历吗?删除后无法恢复', '提示', {
         type: 'warning'
       })
-      // TODO: 删除简历
-      // await request.delete(`/resumes/${r.id}`)
+      await request.delete(`/resumes/${r.id}`)
       ElMessage.success('已删除')
       await refreshList()
     } catch {}

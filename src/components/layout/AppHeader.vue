@@ -27,10 +27,6 @@
           <el-icon><MagicStick /></el-icon>
           <span>AI 求职顾问</span>
         </el-menu-item>
-        <el-menu-item index="/admin">
-          <el-icon><DataBoard /></el-icon>
-          <span>Agent 监控后台</span>
-        </el-menu-item>
         <el-menu-item index="/resume">
           <el-icon><Document /></el-icon>
           <span>我的简历</span>
@@ -38,6 +34,14 @@
         <el-menu-item index="/dashboard">
           <el-icon><DataAnalysis /></el-icon>
           <span>数据分析</span>
+        </el-menu-item>
+        <el-menu-item index="/admin" v-if="isAdmin">
+          <el-icon><DataBoard /></el-icon>
+          <span>Agent 监控后台</span>
+        </el-menu-item>
+        <el-menu-item index="/data-admin" v-if="isAdmin">
+          <el-icon><DataLine /></el-icon>
+          <span>数据管理</span>
         </el-menu-item>
       </el-menu>
 
@@ -88,13 +92,14 @@ const router = useRouter()
 const userStore = useUserStore()
 
 // 登录态
-const { isLoggedIn, userInfo, username } = storeToRefs(userStore)
+const { isLoggedIn, userInfo, username, isAdmin } = storeToRefs(userStore)
 
 // 高亮当前菜单
 const activeMenu = computed(() => {
   const path = route.path
   if (path.startsWith('/jobs')) return '/jobs'
   if (path.startsWith('/resume')) return '/resume'
+  if (path.startsWith('/data-admin')) return '/data-admin'
   return path
 })
 

@@ -55,6 +55,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatSalary } from '@/utils/format'
 
 const props = defineProps({
   job: {
@@ -78,15 +79,7 @@ const companyText = computed(() => {
   return `${industryText.value} · ${size}`
 })
 
-const salaryText = computed(() => {
-  const j = props.job
-  if (!j.salary_min && !j.salary_max) return '薪资面议'
-  const unit = j.salary_unit === 'day' ? '元/天' : j.salary_unit === 'year' ? 'K/年' : 'K'
-  if (j.salary_min && j.salary_max) {
-    return `${j.salary_min}-${j.salary_max}${unit}${j.salary_months ? `·${j.salary_months}薪` : ''}`
-  }
-  return `${j.salary_min || j.salary_max}${unit}`
-})
+const salaryText = computed(() => formatSalary(props.job))
 
 const jobTypeText = computed(() => {
   const map = { full: '全职', part: '兼职', intern: '实习' }
@@ -94,12 +87,26 @@ const jobTypeText = computed(() => {
 })
 
 const sourceText = computed(() => {
-  const map = { boss: 'Boss直聘', liepin: '猎聘', official: '官方' }
+  const map = {
+    boss: 'Boss直聘',
+    liepin: '猎聘',
+    official: '官方',
+    NCSS: '大学生就业网',
+    '51job': '前程无忧',
+    cultural: '文化创意'
+  }
   return map[props.job.source] || props.job.source || ''
 })
 
 const sourceTagType = computed(() => {
-  const map = { boss: 'success', liepin: 'warning', official: 'info' }
+  const map = {
+    boss: 'success',
+    liepin: 'warning',
+    official: 'info',
+    NCSS: 'info',
+    '51job': 'danger',
+    cultural: 'primary'
+  }
   return map[props.job.source] || 'info'
 })
 

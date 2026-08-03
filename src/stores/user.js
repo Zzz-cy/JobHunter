@@ -23,7 +23,10 @@ export const useUserStore = defineStore('user', {
 
   getters: {
     isLoggedIn: (state) => !!state.token,
-    username: (state) => state.userInfo?.nickname || state.userInfo?.phone || ''
+    username: (state) => state.userInfo?.nickname || state.userInfo?.phone || '',
+    // 是否管理员: role === 'admin' 才能看到"数据管理"/"监控后台"菜单
+    // 未登录或普通用户都返回 false
+    isAdmin: (state) => state.userInfo?.role === 'admin'
   },
 
   actions: {

@@ -64,9 +64,12 @@
           <el-option label="50K 以上" value="50-" />
         </el-select>
 
-        <el-select v-model="filters.source" placeholder="来源" clearable style="width: 120px">
+        <el-select v-model="filters.source" placeholder="来源" clearable style="width: 140px">
           <el-option label="Boss直聘" value="boss" />
           <el-option label="猎聘" value="liepin" />
+          <el-option label="大学生就业网" value="NCSS" />
+          <el-option label="前程无忧" value="51job" />
+          <el-option label="文化创意" value="cultural" />
           <el-option label="官网" value="official" />
         </el-select>
 
@@ -104,12 +107,14 @@
 
         <!-- 职位卡片列表 -->
         <div v-else class="job-list">
-          <JobCard
+          <router-link
             v-for="job in jobList"
             :key="job.id"
-            :job="job"
-            @click="goJobDetail"
-          />
+            :to="`/jobs/${job.id}`"
+            class="job-card-link"
+          >
+            <JobCard :job="job" />
+          </router-link>
         </div>
 
         <!-- 分页 -->
@@ -166,6 +171,9 @@
 </template>
 
 <script setup>
+// 声明组件 name,供 keep-alive 的 include 匹配(从详情页返回时缓存列表状态)
+defineOptions({ name: 'JobList' })
+
 import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search, Star, Document } from '@element-plus/icons-vue'
@@ -333,6 +341,13 @@ onMounted(async () => {
 .result-main {
   flex: 1;
   min-width: 0;
+}
+
+/* 卡片链接:让 router-link 表现为块级,去掉默认下划线 */
+.job-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
 }
 
 .result-header {

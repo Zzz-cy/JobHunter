@@ -18,8 +18,7 @@ export const useJobStore = defineStore('job', {
     queryParams: {
       keyword: '',
       city: '',
-      salaryMin: null,
-      salaryMax: null,
+      salaryRange: null,     // 薪资区间字符串如 "20-30", 后端按 K 解析后转元查库
       experience: '',
       education: '',
       industry: '',
@@ -44,17 +43,12 @@ export const useJobStore = defineStore('job', {
   },
 
   actions: {
-    // 把组件本地的过滤条件同步到 store.queryParams(发请求真正用的字段)
-    // salaryRange 是 "20-30" 这种字符串,这里拆成 salaryMin/salaryMax 两个数字
+    // salaryRange 是 "20-30" 这种字符串, 原样传给后端会把它从 K 转成元再查库(数据库存元)
     setQueryParams(filters) {
-      const [min, max] = filters.salaryRange
-        ? filters.salaryRange.split('-')
-        : ['', '']
       const { salaryRange, ...rest } = filters
       Object.assign(this.queryParams, {
         ...rest,
-        salaryMin: min === '' ? null : Number(min),
-        salaryMax: max === '' ? null : Number(max)
+        salaryRange: salaryRange || null
       })
     },
 
@@ -62,7 +56,16 @@ export const useJobStore = defineStore('job', {
     async fetchJobList() {
       this.loading = true
       try {
-        const res = await request.get('/jobs/page', { params: this.queryParams })
+        // ⚠️ 后端字段用下划线命名(salary_range / page_size),
+        // 前端 store 用驼峰, 这里发请求前必须转换, 否则后端收不到
+        const params = {
+          ...this.queryParams,
+          salary_range: this.queryParams.salaryRange,
+          page_size: this.queryParams.pageSize,
+        }
+        delete params.salaryRange
+        delete params.pageSize
+        const res = await request.get('/jobs/page', { params })
         this.jobList = res.items
         this.total = res.total
       } finally {
@@ -113,10 +116,5 @@ export const useJobStore = defineStore('job', {
         this.favoriteIds.add(id)
       }
     },
-
-    // (已删除 recordClick)
-    // 原逻辑:点职位详情就调 POST /jobs/applications/{id}/click 存 clicked 记录
-    // 问题:会产生大量"点过但没投"的垃圾数据,污染求职进度列表
-    // 改进:点击详情不再存记录;真正的投递行为才记录(submitted/interviewed/...)
   }
 })

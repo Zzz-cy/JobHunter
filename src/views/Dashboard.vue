@@ -34,10 +34,7 @@
           <template #header>
             <div class="chart-title">
               <span>薪资分布</span>
-              <el-radio-group v-model="salaryChartType" size="small">
-                <el-radio-button label="histogram">直方图</el-radio-button>
-                <el-radio-button label="boxplot">箱型图</el-radio-button>
-              </el-radio-group>
+              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
             </div>
           </template>
           <div ref="salaryChartRef" class="chart-canvas"></div>
@@ -63,10 +60,7 @@
           <template #header>
             <div class="chart-title">
               <span>热门技能 TOP 15</span>
-              <el-radio-group v-model="skillChartType" size="small">
-                <el-radio-button label="bar">柱状图</el-radio-button>
-                <el-radio-button label="cloud">词云</el-radio-button>
-              </el-radio-group>
+              <el-tag size="small" type="info" effect="plain">按职位需求数</el-tag>
             </div>
           </template>
           <div ref="skillChartRef" class="chart-canvas"></div>
@@ -77,10 +71,7 @@
           <template #header>
             <div class="chart-title">
               <span>行业职位占比</span>
-              <el-radio-group v-model="industryChartType" size="small">
-                <el-radio-button label="pie">饼图</el-radio-button>
-                <el-radio-button label="sunburst">旭日图</el-radio-button>
-              </el-radio-group>
+              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
             </div>
           </template>
           <div ref="industryChartRef" class="chart-canvas"></div>
@@ -94,7 +85,7 @@
         <el-card class="chart-card" shadow="never">
           <template #header>
             <div class="chart-title">
-              <span>招聘需求趋势 (近 6 个月)</span>
+              <span>招聘需求趋势 (近 8 个月)</span>
               <el-tag size="small" type="info" effect="plain">按发布时间</el-tag>
             </div>
           </template>
@@ -140,9 +131,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as echarts from 'echarts'
-// import request from '@/utils/request'
+import request from '@/utils/request'
 
 // 顶部统计
 const topStats = reactive([
@@ -151,11 +142,6 @@ const topStats = reactive([
   { label: '覆盖城市', value: '0', icon: 'Location', bg: '#e6a23c' },
   { label: '技能字典', value: '0', icon: 'Cpu', bg: '#f56c6c' }
 ])
-
-// 图表类型控制
-const salaryChartType = ref('histogram')
-const skillChartType = ref('bar')
-const industryChartType = ref('pie')
 
 // chart DOM 引用
 const salaryChartRef = ref(null)
@@ -183,10 +169,8 @@ const resizeAll = () => {
 }
 
 // --- 各图表配置 ---
-
-const renderSalaryChart = () => {
-  // TODO: 从后端拉取薪资分布数据
-  // const data = await request.get('/stats/salary-distribution')
+const renderSalaryChart = async () => {
+  const data = await request.get('/stats/salary-distribution')
   const option = {
     tooltip: { trigger: 'axis' },
     grid: { left: 40, right: 20, top: 30, bottom: 30 },
@@ -199,7 +183,7 @@ const renderSalaryChart = () => {
     series: [
       {
         type: 'bar',
-        data: [/* data */],
+        data: data,
         itemStyle: { color: '#409eff', borderRadius: [4, 4, 0, 0] }
       }
     ]
@@ -207,21 +191,21 @@ const renderSalaryChart = () => {
   initChart('salary', salaryChartRef.value, option)
 }
 
-const renderCityChart = () => {
-  // TODO: const data = await request.get('/stats/city-distribution')
+const renderCityChart = async () => {
+  const data = await request.get('/stats/city-distribution')
   const option = {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { left: 80, right: 20, top: 30, bottom: 30 },
     xAxis: { type: 'value' },
     yAxis: {
       type: 'category',
-      data: ['北京', '上海', '深圳', '杭州', '广州', '成都', '南京', '武汉', '西安', '苏州'],
+      data: data.city,
       inverse: true
     },
     series: [
       {
         type: 'bar',
-        data: [/* data */],
+        data: data.count,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
             { offset: 0, color: '#409eff' },
@@ -236,21 +220,21 @@ const renderCityChart = () => {
   initChart('city', cityChartRef.value, option)
 }
 
-const renderSkillChart = () => {
-  // TODO: const data = await request.get('/stats/skills/hot', { params: { limit: 15 } })
+const renderSkillChart = async () => {
+  const data = await request.get('/stats/skills/hot')
   const option = {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { left: 80, right: 30, top: 30, bottom: 30 },
     xAxis: { type: 'value' },
     yAxis: {
       type: 'category',
-      data: ['Python', 'Java', 'JavaScript', 'Go', 'React', 'Vue', 'MySQL', 'Redis', 'Docker', 'K8s', 'Spark', 'LLM', 'AI', '数据建模', '产品'],
+      data: data.name,
       inverse: true
     },
     series: [
       {
         type: 'bar',
-        data: [/* data */],
+        data: data.count,
         itemStyle: { color: '#e6a23c', borderRadius: [0, 4, 4, 0] }
       }
     ]
@@ -258,8 +242,8 @@ const renderSkillChart = () => {
   initChart('skill', skillChartRef.value, option)
 }
 
-const renderIndustryChart = () => {
-  // TODO: const data = await request.get('/stats/industry-distribution')
+const renderIndustryChart = async () => {
+  const data = await request.get('/stats/industry-distribution')
   const option = {
     tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
     legend: { orient: 'vertical', right: 10, top: 'middle', textStyle: { fontSize: 11 } },
@@ -269,14 +253,7 @@ const renderIndustryChart = () => {
         type: 'pie',
         radius: ['40%', '70%'],
         center: ['40%', '50%'],
-        data: [
-          { name: '互联网/IT', value: 0 },
-          { name: '金融', value: 0 },
-          { name: '制造业', value: 0 },
-          { name: '教育', value: 0 },
-          { name: '医疗', value: 0 },
-          { name: '其他', value: 0 }
-        ],
+        data: data,
         label: { fontSize: 11 }
       }
     ]
@@ -284,41 +261,33 @@ const renderIndustryChart = () => {
   initChart('industry', industryChartRef.value, option)
 }
 
-const renderTrendChart = () => {
-  // TODO: const data = await request.get('/stats/trend', { params: { months: 6 } })
+const renderTrendChart = async () => {
+  const data = await request.get('/stats/job-trend')
   const option = {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['新增职位', '下架职位'] },
-    grid: { left: 50, right: 20, top: 40, bottom: 30 },
+    grid: { left: 50, right: 20, top: 30, bottom: 30 },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: ['1月', '2月', '3月', '4月', '5月', '6月']
+      data: data.month,
     },
-    yAxis: { type: 'value' },
+    yAxis: { type: 'value', name: '职位数' },
     series: [
       {
         name: '新增职位',
         type: 'line',
         smooth: true,
-        data: [],
+        data: data.count,
         areaStyle: { opacity: 0.3 },
         itemStyle: { color: '#409eff' }
-      },
-      {
-        name: '下架职位',
-        type: 'line',
-        smooth: true,
-        data: [],
-        itemStyle: { color: '#f56c6c' }
       }
     ]
   }
   initChart('trend', trendChartRef.value, option)
 }
 
-const renderEduChart = () => {
-  // TODO: const data = await request.get('/stats/education-distribution')
+const renderEduChart = async () => {
+  const data = await request.get('/stats/education-distribution')
   const option = {
     tooltip: { trigger: 'item' },
     legend: { bottom: 0 },
@@ -326,13 +295,7 @@ const renderEduChart = () => {
       {
         type: 'pie',
         radius: ['35%', '60%'],
-        data: [
-          { name: '不限', value: 0 },
-          { name: '大专', value: 0 },
-          { name: '本科', value: 0 },
-          { name: '硕士', value: 0 },
-          { name: '博士', value: 0 }
-        ],
+        data: data,
         label: { formatter: '{b}: {d}%', fontSize: 11 }
       }
     ]
@@ -340,25 +303,28 @@ const renderEduChart = () => {
   initChart('edu', eduChartRef.value, option)
 }
 
-const renderExpRadarChart = () => {
-  // TODO: const data = await request.get('/stats/experience-salary')
+const renderExpRadarChart = async () => {
+  const data = await request.get('/stats/experience-salary')
   const option = {
-    tooltip: {},
+    tooltip: {
+      trigger: 'item',
+      formatter: (params) => {
+        let html = `${params.name}<br/>`
+        data.labels.forEach((label, i) => {
+          html += `${label}: ${data.values[i]}K<br/>`
+        })
+        return html
+      }
+    },
     radar: {
-      indicator: [
-        { name: '应届', max: 50 },
-        { name: '1-3年', max: 50 },
-        { name: '3-5年', max: 50 },
-        { name: '5-10年', max: 50 },
-        { name: '10年+', max: 50 }
-      ],
+      indicator: data.labels.map(name => ({ name, max: 50 })),
       radius: '60%'
     },
     series: [
       {
         type: 'radar',
         data: [
-          { value: [0, 0, 0, 0, 0], name: '平均薪资(K)' }
+          { value: data.values, name: '平均薪资(K)' }
         ],
         areaStyle: { opacity: 0.3 }
       }
@@ -367,8 +333,8 @@ const renderExpRadarChart = () => {
   initChart('expRadar', expRadarChartRef.value, option)
 }
 
-const renderSourceChart = () => {
-  // TODO: const data = await request.get('/stats/source-distribution')
+const renderSourceChart = async () => {
+  const data = await request.get('/stats/source-distribution')
   const option = {
     tooltip: { trigger: 'item' },
     legend: { bottom: 0 },
@@ -376,11 +342,7 @@ const renderSourceChart = () => {
       {
         type: 'pie',
         radius: '60%',
-        data: [
-          { name: 'Boss直聘', value: 0 },
-          { name: '猎聘', value: 0 },
-          { name: '官网直招', value: 0 }
-        ],
+        data: data,
         label: { formatter: '{b}: {c} ({d}%)', fontSize: 11 }
       }
     ]
@@ -391,27 +353,26 @@ const renderSourceChart = () => {
 // 加载所有数据并渲染
 const loadAllCharts = async () => {
   await nextTick()
-  // TODO: 拉取顶部统计数据
-  // const stats = await request.get('/stats/overview')
-  // topStats[0].value = stats.jobCount
-  // topStats[1].value = stats.companyCount
-  // topStats[2].value = stats.cityCount
-  // topStats[3].value = stats.skillCount
+  try {
+    const stats = await request.get('/stats/overview')
+    topStats[0].value = stats.job_count
+    topStats[1].value = stats.company_count
+    topStats[2].value = stats.city_count
+    topStats[3].value = stats.skill_count
+  } catch (e) {
+    console.error('统计数据加载失败:', e)
+  }
 
-  renderSalaryChart()
-  renderCityChart()
-  renderSkillChart()
-  renderIndustryChart()
-  renderTrendChart()
-  renderEduChart()
-  renderExpRadarChart()
-  renderSourceChart()
+  // 图表渲染单独 try-catch, 避免1个失败影响全部
+  try { await renderSalaryChart() } catch (e) { console.error('薪资图失败:', e) }
+  try { renderCityChart() } catch (e) { console.error('城市图失败:', e) }
+  try { renderSkillChart() } catch (e) { console.error('技能图失败:', e) }
+  try { renderIndustryChart() } catch (e) { console.error('行业图失败:', e) }
+  try { renderTrendChart() } catch (e) { console.error('趋势图失败:', e) }
+  try { renderEduChart() } catch (e) { console.error('学历图失败:', e) }
+  try { renderExpRadarChart() } catch (e) { console.error('经验图失败:', e) }
+  try { renderSourceChart() } catch (e) { console.error('来源图失败:', e) }
 }
-
-// 图表类型切换时重渲染
-watch(salaryChartType, renderSalaryChart)
-watch(skillChartType, renderSkillChart)
-watch(industryChartType, renderIndustryChart)
 
 onMounted(() => {
   loadAllCharts()

@@ -100,6 +100,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import JobCard from '@/components/common/JobCard.vue'
 import { useJobStore } from '@/stores/job'
+import request from '@/utils/request'
 
 const router = useRouter()
 const jobStore = useJobStore()
@@ -162,17 +163,17 @@ const goJobDetail = (job) => {
 
 onMounted(async () => {
   jobStore.getHots()
-  // const [statRes, hotRes] = await Promise.all([
-  //   request.get('/stats/overview'),
-  //   request.get('/jobs/hot', { params: { limit: 6 } })
-  // ])
-  // stats.value = [
-  //   { label: '在招职位', value: statRes.jobCount },
-  //   { label: '入驻公司', value: statRes.companyCount },
-  //   { label: '技能字典', value: statRes.skillCount },
-  //   { label: '行业覆盖', value: statRes.industryCount }
-  // ]
-  // hotJobs.value = hotRes.list
+  const [statRes, hotRes] = await Promise.all([
+    request.get('/stats/overview'),
+    request.get('/jobs/hot')
+  ])
+  stats.value = [
+    { label: '在招职位', value: statRes.job_count },
+    { label: '入驻公司', value: statRes.company_count },
+    { label: '技能字典', value: statRes.skill_count },
+    { label: '行业覆盖', value: statRes.industry_count }
+  ]
+  hotJobs.value = hotRes || []
 })
 </script>
 

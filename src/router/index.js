@@ -48,7 +48,7 @@ const routes = [
         path: 'admin',
         name: 'Admin',
         component: () => import('@/views/AdminView.vue'),
-        meta: { title: 'Agent 监控后台', requiresAuth: true }
+        meta: { title: 'Agent 监控后台', requiresAuth: true, requireAdmin: true }
       },
       {
         path: 'resume',
@@ -67,6 +67,12 @@ const routes = [
         name: 'Profile',
         component: () => import('@/views/Profile.vue'),
         meta: { title: '个人中心', requiresAuth: true }
+      },
+      {
+        path: 'data-admin',
+        name: 'DataAdmin',
+        component: () => import('@/views/DataAdmin.vue'),
+        meta: { title: '数据管理', requiresAuth: true, requireAdmin: true }
       }
     ]
   },
@@ -86,18 +92,24 @@ const router = createRouter({
   }
 })
 
-// 全局前置守卫:页面标题 + 登录态校验
+// 全局前置守卫:页面标题 + 登录态校验 + 管理员权限校验
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - JobHunter` : 'JobHunter'
 
   const userStore = useUserStore()
   const isLoggedIn = userStore.isLoggedIn
 
+  // 1. 需要登录但未登录 → 跳登录页
   if (to.meta.requiresAuth && !isLoggedIn) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
-  } else {
-    next()
+    return
   }
+  // 2. 需要管理员权限但不是管理员 → 跳首页(防止直接输 URL 访问)
+  if (to.meta.requireAdmin && !userStore.isAdmin) {
+    next({ name: 'Home' })
+    return
+  }
+  next()
 })
 
 export default router

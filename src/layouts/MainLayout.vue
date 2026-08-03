@@ -7,9 +7,13 @@
 
     <!-- 主内容区 -->
     <el-main class="layout-main">
-      <router-view v-slot="{ Component }">
+      <router-view v-slot="{ Component, route }">
         <transition name="fade" mode="out-in">
-          <component :is="Component" />
+          <!-- keep-alive:缓存列表页等"状态重要"的页面,
+               从详情页返回时保留筛选条件/分页/滚动位置,不重新请求 -->
+          <keep-alive :include="['JobList']">
+            <component :is="Component" :key="route.fullPath" />
+          </keep-alive>
         </transition>
       </router-view>
     </el-main>

@@ -48,7 +48,7 @@
             <!-- 去外站:只跳转,不记录投递(用户点了不一定真投) -->
             <el-button size="large" @click="goExternalApply">
               <el-icon><Link /></el-icon>
-              去外站
+              去投递
             </el-button>
           </div>
         </div>
@@ -76,7 +76,7 @@
                 职位描述
               </div>
             </template>
-            <div class="jd-content" v-html="job.description || job.description_text || '暂无描述'">
+            <div class="jd-content" v-html="formattedDescription">
             </div>
           </el-card>
 
@@ -222,14 +222,31 @@ const isFavorited = ref(false)
 const hasApplied = ref(false)   // 是否已投递(求职进度里有这条记录)
 const submitting = ref(false)   // 标记投递按钮的 loading
 
-const formatSalary = (j) => {
-  if (!j || (!j.salary_min && !j.salary_max)) return '薪资面议'
-  const unit = j.salary_unit === 'day' ? '元/天' : j.salary_unit === 'year' ? 'K/年' : 'K'
-  if (j.salary_min && j.salary_max) {
-    return `${j.salary_min}-${j.salary_max}${unit}${j.salary_months ? `·${j.salary_months}薪` : ''}`
+
+// JD 正文排版处理
+const formattedDescription = computed(() => {
+  let text = job.value.description || job.value.description_text || ''
+  if (!text) return '暂无描述'
+  // 判断是不是 HTML 格式(包含 <p> <br> <div> 等标签)
+  const isHtml = /<[a-z][\s\S]*?>/i.test(text)
+  // 公用:小标题加粗
+  const boldHeadings = (t) => t.replace(
+    /(岗位职责|工作职责|工作内容|职位描述|职责描述|任职要求|职位要求|岗位要求|任职资格|加分项|福利待遇)/g,
+    '<strong>$1</strong>'
+  )
+  if (isHtml) {
+    // ---- HTML 格式:信任爬虫数据,解析标签 ----
+    text = text.replace(/\r\n/g, ' ').replace(/\n/g, ' ')  // HTML 里换行无意义
+    text = text.replace(/<\/p>/gi, '</p>\n')                // </p> 后补换行
+    text = text.replace(/<br\s*\/?>/gi, '<br>')             // <br> 统一
+    return boldHeadings(text)
   }
-  return `${j.salary_min || j.salary_max}${unit}`
-}
+  // ---- 纯文本/字面 \n 格式 ----
+  text = text.replace(/\\n/g, '\n')      // 字面 \n 转真换行
+  text = text.replace(/\r\n/g, '\n')     // 统一 \r\n
+  text = text.replace(/\n/g, '<br>')     // 真换行转 <br>
+  return boldHeadings(text)
+})
 
 const jobTypeText = computed(() => {
   const map = { full: '全职', part: '兼职', intern: '实习' }
@@ -305,6 +322,7 @@ const goSimilar = (sj) => {
 
 import { onMounted, watch } from 'vue'
 import request from '@/utils/request'
+import { formatSalary } from '@/utils/format'
 
 // 加载职位详情 + 相似职位 + 收藏状态(抽成函数, onMounted 和 watch 都能调)
 const loadJobData = async (jobId) => {
@@ -427,6 +445,18 @@ watch(
   line-height: 1.8;
   color: #303133;
   font-size: 14px;
+  word-break: break-word;   /* 长文本自动换行 */
+}
+
+/* 加粗的小标题(岗位职责/任职要求等) */
+.jd-content :deep(strong) {
+  display: inline-block;
+  margin-top: 12px;
+  color: #409eff;
+  font-weight: 600;
+}
+.jd-content :deep(strong:first-child) {
+  margin-top: 0;   /* 第一个标题不要顶部间距 */
 }
 
 .jd-content :deep(p) {

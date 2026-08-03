@@ -44,56 +44,28 @@ export const useResumeStore = defineStore('resume', {
       formData.append('file', file)
       if (title) formData.append('title', title)
       try {
+        // 上传 + 同步解析(后端会等 LLM 返回, 可能要 30-60 秒)
+        // 单独配 120 秒超时(和后端 LLM_PARSE_TIMEOUT 对齐), 不用全局的 30 秒
         const res = await request.post('/resumes/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 120000,   // 2 分钟, AI 解析慢
           onUploadProgress: (e) => {
             this.parseProgress = Math.round((e.loaded * 100) / e.total)
           }
         })
-        this.uploadStatus = 'parsing'
-        // 轮询解析状态
-        await this.pollParseStatus(res.id)
+        // 后端同步返回: 上传完解析也完了, 直接看 status
+        if (res.parse_status === 'done') {
+          this.uploadStatus = 'done'
+        } else if (res.parse_status === 'failed') {
+          this.uploadStatus = 'failed'
+          this.parseError = res.parse_error || '简历解析失败, 可重试'
+        } else {
+          this.uploadStatus = 'done'
+        }
       } catch (err) {
         this.uploadStatus = 'failed'
         this.parseError = err.message
       }
-    },
-
-    // 轮询解析状态
-    async pollParseStatus(resumeId) {
-      // TODO: 轮询简历解析状态直到 done/failed
-      // while (true) {
-      //   await new Promise((r) => setTimeout(r, 2000))
-      //   const res = await request.get(`/resumes/${resumeId}/status`)
-      //   if (res.parseStatus === 'done') {
-      //     this.uploadStatus = 'done'
-      //     await this.fetchResumeList()
-      //     break
-      //   }
-      //   if (res.parseStatus === 'failed') {
-      //     this.uploadStatus = 'failed'
-      //     this.parseError = res.parseError
-      //     break
-      //   }
-      // }
-      console.log('[TODO] pollParseStatus', resumeId)
-    },
-
-    // 删除简历
-    async deleteResume(id) {
-      // TODO: 调用后端删除接口
-      // await request.delete(`/resumes/${id}`)
-      // await this.fetchResumeList()
-      console.log('[TODO] deleteResume', id)
-    },
-
-    // 获取推荐结果
-    async fetchRecommendations(resumeId) {
-      // TODO: 调用后端推荐接口
-      // const res = await request.get(`/recommendations?resumeId=${resumeId}`)
-      // return res.list
-      console.log('[TODO] fetchRecommendations', resumeId)
-      return []
     }
   }
 })
