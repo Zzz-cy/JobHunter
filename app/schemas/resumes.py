@@ -28,13 +28,10 @@ class ResumeUploadOut(ORMOut):
     created_at: datetime | None = None
 
 
-# ============================================================
-# 出参: 简历卡片里的单个技能(精简版)
-# ============================================================
+# 出参: 简历卡片里的单个技能
 class SkillOut(ORMOut):
     id: int                            # 取自 Skill 字典表
     name: str                          # 取自 Skill 字典表
-    proficiency: int | None = None     # 取自 ResumeSkill 本身
 
     @model_validator(mode="before")
     @classmethod
@@ -49,14 +46,11 @@ class SkillOut(ORMOut):
             return {
                 "id": getattr(skill_obj, "id", None),
                 "name": getattr(skill_obj, "name", None),
-                "proficiency": getattr(data, "proficiency", None),
             }
         return data
 
 
-# ============================================================
 # 出参: 用户的简历卡片数据列表
-# ============================================================
 class OutList(ORMOut):
     """
     返回用户简历卡片数据
@@ -64,6 +58,7 @@ class OutList(ORMOut):
     id: int
     title: str | None = None      # 用户自定义标题, 未填则前端回退显示 name
     name: str
+    is_primary: int = 0           # 是否默认简历(0普通 1默认), 前端据此显示"默认"标签
     city: str | None = None
     work_years: int | None = None
     education: str | None = None

@@ -98,3 +98,19 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    """管理员鉴权依赖: 在 get_current_user 基础上, 再校验 role == 'admin'。
+
+    用法: 需要管理员权限的接口加 current_user: User = Depends(require_admin)
+    普通用户调用 → 403 Forbidden; 未登录 → 401(get_current_user 已处理)
+
+    叠加依赖: require_admin → get_current_user → 解析 token → 查 user → 校 role
+    """
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限",
+        )
+    return user

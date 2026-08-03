@@ -13,6 +13,7 @@ from app.schemas.page import PageParams, PageResult
 from app.schemas.result import BizCode, Result
 from app.schemas.auth import RegisterSchema, LoginSchema, LoginOut, UserOut
 from app.schemas.jobs import JobSearchSchema, CompanyBrief, JobSkillOut, JobOut
+from app.schemas.stats import OverviewOut
 
 __all__ = [
     # ---- 基类 ----
@@ -34,4 +35,6 @@ __all__ = [
     "CompanyBrief",
     "JobSkillOut",
     "JobOut",
+    # ---- 统计数据 ----
+    "OverviewOut",
 ]

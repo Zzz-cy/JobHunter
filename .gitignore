@@ -69,3 +69,5 @@ test_query.py
 test_*.py
 scratch_*.py
 tmp_*.py
+gen_test_resume.py
+test_resume.pdf

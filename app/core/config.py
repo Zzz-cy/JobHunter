@@ -70,6 +70,17 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = Field(default="uploads", description="文件上传根目录(相对 backend/)")
     RESUME_MAX_SIZE_MB: int = Field(default=10, description="简历文件大小上限(MB)")
 
+    # ---------- LLM 简历解析服务 ----------
+    # 同机部署, 直接传本地文件路径给 LLM, LLM 读文件解析返回 JSON
+    LLM_SERVICE_URL: str = Field(
+        default="http://localhost:8001",
+        description="LLM 简历解析服务地址(队友的端口, 联调时确认)",
+    )
+    LLM_PARSE_TIMEOUT: int = Field(
+        default=120,
+        description="LLM 解析超时(秒), AI 解析慢要给足",
+    )
+
     # ---------- 派生属性 ----------
     @property
     def MYSQL_DSN_ASYNC(self) -> str:

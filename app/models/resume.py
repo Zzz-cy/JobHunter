@@ -47,6 +47,12 @@ class Resume(Base, TimestampMixin, SoftDeleteMixin):
         index=True,
     )
 
+    # ---------- 是否默认简历 ----------
+    # 每个用户只能有 1 份默认简历(用于推荐匹配/一键投递), 设置时互斥清零其他简历
+    is_primary: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, index=True,
+    )   # 0=普通, 1=默认
+
     # ---------- 标题 ----------
     # 用户上传时自定义的简历标题, 比如"高级 Python 工程师版", 用于在卡片上区分多份简历
     # nullable=True: 老数据/未填写时为 NULL, 前端回退显示姓名 name
@@ -118,7 +124,9 @@ class ResumeSkill(Base):
     skill_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("skills.id"), nullable=False, index=True,
     )
-    proficiency: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    # 熟练度(1-5): AI 一般解析不到(简历里不会写"L4"), 设为可空。
+    # 没有 None 时前端 SkillTag 的 v-if 不显示等级, 避免显示假的默认值。
+    proficiency: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     years: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 1))
 
     resume: Mapped[Resume] = relationship(back_populates="skills")

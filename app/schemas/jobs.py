@@ -10,9 +10,7 @@ from app.schemas.base import ORMOut
 from app.schemas.page import PageParams
 
 
-# ============================================================
 # 职位搜索入参
-# ============================================================
 class JobSearchSchema(PageParams, ORMOut):
     """职位列表搜索入参。
 
@@ -34,9 +32,7 @@ class JobSearchSchema(PageParams, ORMOut):
     sort: str = Field(default="default", description="排序: default/latest/salary")
 
 
-# ============================================================
 # 出参: 公司信息(嵌套在 JobOut 里)
-# ============================================================
 class CompanyBrief(ORMOut):
     """职位卡片上展示的公司简要信息。
 
@@ -53,9 +49,7 @@ class CompanyBrief(ORMOut):
     industry_name: str | None = None
 
 
-# ============================================================
 # 出参: 技能(嵌套在 JobOut 里)
-# ============================================================
 class JobSkillOut(ORMOut):
     """职位要求的单个技能。
 
@@ -71,13 +65,11 @@ class JobSkillOut(ORMOut):
     weight: Decimal | None = None
     skill_name: str | None = None
     skill_code: str | None = None
-    category: str | None = None        # 分类(语言/框架/工具), 影响 SkillTag 颜色
-    is_hot: int = 0                     # 是否热门, 影响 SkillTag 是否显示火焰图标
+    category: str | None = None  # 分类(语言/框架/工具), 影响 SkillTag 颜色
+    is_hot: int = 0  # 是否热门, 影响 SkillTag 是否显示火焰图标
 
 
-# ============================================================
 # 出参: 职位详情(列表项)
-# ============================================================
 class JobOut(ORMOut):
     """职位列表项出参。
 
@@ -101,8 +93,9 @@ class JobOut(ORMOut):
     publish_at: datetime | None = None
 
     # ---------- 嵌套关联 ----------
-    company: CompanyBrief | None = None       # 来自 Job.company relationship
-    skills: list[JobSkillOut] = []            # 来自 Job.skills relationship
+    company: CompanyBrief | None = None  # 来自 Job.company relationship
+    skills: list[JobSkillOut] = []  # 来自 Job.skills relationship
+
 
 class CompanyDetail(CompanyBrief):
     """公司完整(详情页用)。
@@ -117,6 +110,7 @@ class CompanyDetail(CompanyBrief):
     welfare: list[str] | None = None
     description: str | None = None
 
+
 class JobDetailOut(JobOut):
     """职位详情(重量)。
 
@@ -124,15 +118,16 @@ class JobDetailOut(JobOut):
     """
 
     # 详情页才需要的字段
-    description: str | None = None         # JD HTML 正文
-    description_text: str | None = None    # JD 纯文本
-    advantage: str | None = None           # 职位亮点
+    description: str | None = None  # JD HTML 正文
+    description_text: str | None = None  # JD 纯文本
+    advantage: str | None = None  # 职位亮点
     job_type: str = "full"
     highlights: list | None = None
     address: str | None = None
 
     # 详情页公司信息更全
-    company: CompanyDetail | None = None   # 覆盖父类的 Brief
+    company: CompanyDetail | None = None  # 覆盖父类的 Brief
+
 
 class IndustryOut(ORMOut):
     id: int
@@ -140,4 +135,3 @@ class IndustryOut(ORMOut):
     name: str
     parent_id: int | None = None
     level: int
-

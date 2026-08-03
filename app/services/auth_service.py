@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,29 +6,7 @@ from app.models import User
 from app.schemas import RegisterSchema, LoginSchema, UserOut, LoginOut
 from app.utils.jwtUtil import create_access_token
 from app.utils.pwdUtil import hash_password, verify_password
-
-
-def generate_user_code() -> str:
-    """生成用户编码。
-
-    规律: U + 年月日(8位) + 当日秒数(5位补零)
-        例: U20260628 + 45213 → "U2026062845213"
-
-    为啥不用自增 id:
-        - 自增 id 会泄露业务量(能猜出注册了多少人)
-        - user_code 对外展示, 无规律、不可猜测更安全
-    为啥不用纯随机:
-        - 纯随机(如 uuid)对人不友好, 没有可读性
-        - 带日期前缀方便肉眼识别 + 排序
-    并发风险:
-        - 同一秒注册会有极小概率撞码(实际几乎不可能)
-        - 真要绝对唯一, 可以加 user.id 做后缀, 或在 DB 层加唯一索引兜底
-        (User.user_code 已经是 unique=True, 撞了会抛 IntegrityError)
-    """
-    now = datetime.now()
-    date_part = now.strftime("%Y%m%d")  # 20260628
-    second_part = f"{now.hour * 3600 + now.minute * 60 + now.second:05d}"  # 00000~86399
-    return f"U{date_part}{second_part}"
+from app.utils.codeUtil import generate_code
 
 
 async def register(payload: RegisterSchema, db: AsyncSession):
@@ -50,7 +26,7 @@ async def register(payload: RegisterSchema, db: AsyncSession):
         raise ConflictError("手机号或邮箱已注册")
 
     new_user = User(
-        user_code=generate_user_code(),  # 自动生成, 不信任前端
+        user_code=generate_code("U"),  # 统一用 codeUtil 生成(前缀 U + 日期 + 秒数 + 8位随机)
         phone=payload.phone,
         email=payload.email,
         password_hash=hash_password(payload.password),  # 存 hash, 不存明文

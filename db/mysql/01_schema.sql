@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS `resumes` (
     `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `resume_code`    VARCHAR(64)  NOT NULL,
     `user_id`        BIGINT UNSIGNED NOT NULL,
+    `is_primary`     TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否默认简历(0普通 1默认, 每用户互斥1份)',
     `title`          VARCHAR(128) DEFAULT NULL COMMENT '用户自定义简历标题(如:高级 Python 工程师版)',
     `name`           VARCHAR(64)  NOT NULL COMMENT '姓名',
     `gender`         TINYINT      DEFAULT NULL COMMENT '0男 1女',
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS `resumes` (
     UNIQUE KEY `uk_resume_code` (`resume_code`),
     KEY `idx_resume_user` (`user_id`),
     KEY `idx_resume_status` (`parse_status`),
+    KEY `idx_resume_primary` (`user_id`, `is_primary`),
     KEY `idx_resume_city` (`city`),
     KEY `idx_resume_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='简历主表';
@@ -107,7 +109,7 @@ CREATE TABLE IF NOT EXISTS `resume_skills` (
     `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `resume_id`   BIGINT UNSIGNED NOT NULL,
     `skill_id`    BIGINT UNSIGNED NOT NULL,
-    `proficiency` TINYINT NOT NULL DEFAULT 3 COMMENT '1-5熟练度',
+    `proficiency` TINYINT DEFAULT NULL COMMENT '1-5熟练度(AI一般解析不到, 留空)',
     `years`       DECIMAL(4,1) DEFAULT NULL COMMENT '使用年限',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_resume_skill` (`resume_id`,`skill_id`),

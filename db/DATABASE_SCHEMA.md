@@ -133,6 +133,7 @@ level=1  IT       "互联网/IT"   parent_id=NULL
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | **PRI** | 自增主键 |
 | `resume_code` | VARCHAR(64) | NO | — | **UNI** | 对外编码 |
 | `user_id` | BIGINT UNSIGNED | NO | — | MUL | 所属用户 ID |
+| `is_primary` | TINYINT(1) | NO | 0 | MUL | **是否默认简历**（0=普通，1=默认），每用户互斥仅 1 份，用于推荐匹配/一键投递 |
 | `title` | VARCHAR(128) | YES | NULL | — | 用户自定义简历标题（如"高级 Python 工程师版"），卡片展示用，未填回退显示 `name` |
 | `name` | VARCHAR(64) | NO | — | — | 姓名 |
 | `gender` | TINYINT | YES | NULL | — | 性别（0=男，1=女） |
@@ -160,6 +161,7 @@ level=1  IT       "互联网/IT"   parent_id=NULL
 - `uk_resume_code`：对外编码唯一
 - `idx_resume_user`：查询"某用户的所有简历"
 - `idx_resume_status`：后台监控"待解析简历队列"
+- `idx_resume_primary`：快速查"某用户的默认简历"（`user_id` + `is_primary=1`）
 - `idx_resume_city`：按城市筛选简历
 - `idx_resume_created`：按创建时间排序
 
@@ -186,7 +188,7 @@ pending ──upload──> parsing ──success──> done
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | **PRI** | 自增主键 |
 | `resume_id` | BIGINT UNSIGNED | NO | — | MUL | 简历 ID |
 | `skill_id` | BIGINT UNSIGNED | NO | — | MUL | 技能 ID（关联 `skills.id`） |
-| `proficiency` | TINYINT | NO | 3 | — | 熟练度（1-5），匹配评分权重 |
+| `proficiency` | TINYINT | YES | NULL | — | 熟练度（1-5），匹配评分权重。AI 解析通常抽不到，留 NULL（前端不显示等级） |
 | `years` | DECIMAL(4,1) | YES | NULL | — | 使用年限（如 3.5 年） |
 
 **索引说明**：

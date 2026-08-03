@@ -29,7 +29,9 @@ async def lifespan(app: FastAPI):
     print(f"[JobHunter] 启动成功, 环境={settings.APP_ENV}")
     print(f"[JobHunter] MySQL: {settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}")
     print(f"[JobHunter] ES:     {settings.ES_URL}")
+
     yield  # 之前启动逻辑，之后关闭逻辑。
+
     # 关闭时, 释放连接池
     await engine.dispose()
     print("[JobHunter] 已关闭, 连接池已释放")
@@ -64,11 +66,4 @@ async def health():
         "env": settings.APP_ENV,
         "service": "jobhunter-backend",
     }
-
-
-# ---------- 静态文件挂载 ----------
-# 注意: uploads/ 目录(简历等敏感文件)不再挂载为公开静态路由,
-# 之前 http://host:8000/uploads/resumes/xxx.pdf 任何人都可访问, 存在越权风险。
-# 现在改为通过鉴权接口 GET /resumes/{id}/file 下载, 只允许文件所有者访问。
-# 如需放公开静态资源(如 logo), 可在 public/ 目录单独 mount。
 

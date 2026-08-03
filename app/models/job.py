@@ -48,6 +48,47 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
     experience_req: Mapped[str | None] = mapped_column(String(32))
     education_req: Mapped[str | None] = mapped_column(String(32))
 
+    # ---------- 字段验证器: 学历归一化(入库时自动清洗) ----------
+    from sqlalchemy.orm import validates
+
+    @validates("education_req")
+    def _normalize_education(self, key, value):
+        """写入 education_req 时自动归一化。
+
+         爬虫抓来的 education_req 脏乱差: '统招本科' '本科及以上' '学历不限' 等
+        这里在"写入时"自动归一到 5 个标准值: 博士/硕士/本科/大专/不限
+        """
+        if not value:
+            return None
+        v = str(value)
+        if "博士" in v: return "博士"
+        if "硕士" in v: return "硕士"
+        if "本科" in v or "统招" in v: return "本科"
+        if "大专" in v or "专科" in v: return "大专"
+        return "不限"   # 学历不限/中专等
+
+    @validates("experience_req")
+    def _normalize_experience(self, key, value):
+        """写入 experience_req 时自动归一化到 5 档。
+
+        脏数据如 '3年以上' '经验不限' '2年以上' 归一到标准 5 档:
+          应届 / 1-3年 / 3-5年 / 5-10年 / 10年+ / 不限
+
+        ⚠️ 判断顺序从高到低(10年→5年→3年→1年), 避免误匹配:
+           "10年" 包含 "1", 先判断低的会把 10 年错归到 1-3 年。
+        """
+        if not value:
+            return None
+        v = str(value)
+        # 先判断"不限"(优先级最高, 经验不限=不限)
+        if "不限" in v: return "不限"
+        # 从高到低判断年限(避免"10年"被"1年"误匹配)
+        if "10" in v: return "10年+"
+        if "5" in v or "6" in v or "7" in v or "8" in v or "9" in v: return "5-10年"
+        if "3" in v or "4" in v: return "3-5年"
+        if "1" in v or "2" in v: return "1-3年"
+        return "应届"   # 应届/1年以内/无经验要求 等
+
     # ---------- 薪资 ----------
     salary_min: Mapped[int | None] = mapped_column(Integer)
     salary_max: Mapped[int | None] = mapped_column(Integer)

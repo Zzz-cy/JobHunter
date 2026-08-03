@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.models import Resume
 from app.schemas import Result
 from app.schemas.resumes import ResumeUploadOut, OutList
-from app.services.resumes_service import save_resume_file, get_all
+from app.services.resumes_service import save_resume_file, get_all, parse_and_save_resume, set_primary_resume
 from app.utils.jwtUtil import get_current_user
 
 router = APIRouter(prefix="/resumes", tags=["简历"])
@@ -23,17 +23,25 @@ async def upload_resume(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),   # 上传简历必须登录
 ):
-    """上传简历文件。
+    """上传简历文件 + 同步触发 AI 解析。
 
-    - 只接收 PDF/PNG/JPG
-    - 大小上限 10MB(可配)
-    - 上传成功后返回 resume_id, 状态为 pending(待解析)
-    - 解析是异步的, 前端用 resume_id 轮询 /resumes/{id} 查状态
-      (轮询接口第 2 步再做)
+    流程:
+      1. 校验 + 存文件 + 建 resume 记录(status=pending)
+      2. 调队友 LLM 解析(同步等待, 可能 10-30 秒)
+      3. 拆 JSON 存 4 张表, 更新 status=done
+      4. 失败则 status=failed(不影响上传, 前端能看到状态)
+
+    解析失败时:
+      - resume 记录已建好(file 还在), 用户可重新解析
+      - 前端根据 parse_status 判断显示结果还是错误
     """
+    # 1. 存文件 + 建记录
     resume = await save_resume_file(file, current_user.id, db, title=title)
+    # 2. 同步调 LLM 解析(失败不影响返回, status 会变 failed)
+    resume = await parse_and_save_resume(db, resume.id)
     out = ResumeUploadOut.model_validate(resume)
-    return Result.success(data=out, message="上传成功, 正在解析")
+    message = "上传并解析成功" if resume.parse_status == "done" else "上传成功, 但解析失败"
+    return Result.success(data=out, message=message)
 
 @router.get("/all", response_model=Result[list[OutList]], summary="简历查询")
 async def get_all_resumes(db: AsyncSession = Depends(get_db),current_user=Depends(get_current_user)):
@@ -86,3 +94,57 @@ async def get_resume_file(
 
     media_type = _MIME_MAP.get(file_path.suffix.lower(), "application/octet-stream")
     return FileResponse(file_path, media_type=media_type, filename=resume.title or file_path.name)
+
+
+@router.post("/{resume_id}/reparse", response_model=Result[ResumeUploadOut], summary="重新解析简历")
+async def reparse_resume(
+    resume_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    # 校验简历归属(防止用户解析别人的简历)
+    resume = await db.scalar(
+        select(Resume).where(
+            Resume.id == resume_id,
+            Resume.user_id == current_user.id,
+        )
+    )
+    if resume is None:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError("简历不存在或无权操作")
+
+    resume = await parse_and_save_resume(db, resume.id)
+    out = ResumeUploadOut.model_validate(resume)
+    message = "重新解析成功" if resume.parse_status == "done" else "重新解析失败, 请稍后重试"
+    return Result.success(data=out, message=message)
+
+@router.put("/{resume_id}/primary", response_model=Result, summary="设为默认简历")
+async def set_primary(
+    resume_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """设为默认简历(互斥: 该用户其他简历自动取消默认)。"""
+    await set_primary_resume(db, current_user.id, resume_id)
+    return Result.success(message="已设为默认简历")
+
+@router.delete("/{resume_id}", response_model=Result, summary="删除简历")
+async def delete_resume(
+    resume_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    resume = await db.scalar(
+        select(Resume).where(
+            Resume.id == resume_id,
+            Resume.user_id == current_user.id,   # 校验归属, 防越权删除
+            Resume.is_deleted == 0,
+        )
+    )
+    if resume is None:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError("简历不存在或无权操作")
+
+    resume.is_deleted = 1   # 软删除
+    await db.commit()
+    return Result.success(message="删除成功")

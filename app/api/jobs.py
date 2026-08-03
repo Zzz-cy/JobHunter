@@ -46,6 +46,28 @@ async def get_hot_keywords(db: AsyncSession = Depends(get_db)):
     return Result.success(data=keywords)
 
 
+@router.get("/hot", response_model=Result[List[JobOut]], summary="热门职位(首页用)")
+async def get_hot_jobs(db: AsyncSession = Depends(get_db)):
+    """首页"热门职位"数据。
+
+    用"最新发布 + 薪资较高"近似热门:
+    """
+    stmt = (
+        select(Job)
+        .where(
+            Job.status == "active",
+            Job.is_deleted == 0,
+            Job.publish_at.is_not(None),
+        )
+        .order_by(Job.publish_at.desc())
+        .limit(6)
+    )
+    result = await db.execute(stmt)
+    jobs = result.scalars().unique().all()
+    out = [JobOut.model_validate(j) for j in jobs]
+    return Result.success(data=out)
+
+
 @router.get("/{job_id}", response_model=Result[JobDetailOut], summary="通过job_id职位详情")
 async def get_job(job_id: int, db: AsyncSession = Depends(get_db)):
     """职位详情。

@@ -12,17 +12,20 @@ API 路由聚合包
 类比 models/__init__.py 聚合所有 ORM 模型给 alembic 用。
 """
 from app.api.auth import router as auth_router
+from app.api.crawl import router as crawl_router
 from app.api.jobs import router as jobs_router
 from app.api.resumes import router as resumes_router
 from app.api.user import router as user_router
+from app.api.stats import router as stats_router
 
 # 所有需要挂载的 router 统一放这, 顺序就是 /docs 文档里的展示顺序
 routers = [
     auth_router,     # 认证(注册/登录)放前面
     jobs_router,     # 职位(列表搜索)
     resumes_router,  # 简历接口
-    user_router,    # 用户接口
-    # resumes_router,
+    user_router,     # 用户接口
+    crawl_router,    # 爬虫数据管理(导入/预览)
+    stats_router,    # 数据统计(首页概览)
 ]
 
 __all__ = ["routers"]
