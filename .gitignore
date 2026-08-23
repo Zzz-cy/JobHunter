@@ -79,7 +79,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-<<<<<<< HEAD
 # 临时调试脚本(本地测试数据库/service 用, 测完即删, 别提交)
 # 命名约定: test_*.py 或 scratch_*.py
 test_query.py
@@ -101,5 +100,3 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-=======
->>>>>>> origin/llm_model
