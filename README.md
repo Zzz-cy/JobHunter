@@ -11,9 +11,10 @@
 | 前端 | Vue 3 + Vite 5 + Pinia + Vue Router 4 + Element Plus + ECharts + axios |
 | 后端 | FastAPI + Uvicorn + SQLAlchemy 2.0(async) + Pydantic v2 |
 | 数据库 | MySQL 8 (aiomysql / PyMySQL) |
-| 检索 | Elasticsearch 8 (后续启用) |
-| 图数据库 | Neo4j (后续启用) |
-| AI | 讯飞星火 (后续启用) |
+| LLM 简历解析 | 大模型可切换：智谱 glm-4-flash（默认）/ DeepSeek / Kimi / 通义（在 `llm_module/.env` 配置） |
+| 向量检索 | ChromaDB（简历-JD 语义匹配 / 推荐系统） |
+| 图数据库 | Neo4j 5（知识图谱：技能关系 + 推荐拓展） |
+| 检索 | Elasticsearch 8 (规划中，暂用 MySQL LIKE) |
 | 认证 | JWT (python-jose + passlib) |
 
 ---
@@ -22,19 +23,26 @@
 
 | 分支 | 内容 |
 |---|---|
-| `main` | 项目说明（仅 `README.md`） |
+| `main` | **全量集成**（前端 + 后端 + LLM 模块 + 本文档） |
 | `frontend` | 前端代码 |
 | `backend` | 后端代码 |
+| `llm_model` | LLM 简历解析模块 |
 
-> 本仓库按分支隔离前后端，`main` 只放项目总览文档。**本地开发需要分别拉取 `frontend` 和 `backend` 两个分支**。
+> `main` 是三个功能分支的合并集成版，克隆即得完整项目（答辩演示 / 新人上手用）。
+> **日常开发仍在各自分支进行**（改哪端就拉哪个分支），定期把功能分支合并回 `main`。
 
 ---
 
 ## 一、克隆代码
 
-前后端在不同分支，推荐用 `git worktree` 在本地拼出并列目录。
+### 方案 A：直接克隆 main（拿全量代码，推荐演示/上手）
 
-### 方案 A：git worktree（推荐）
+```bash
+git clone -b main https://github.com/Zzz-cy/JobHunter.git
+# 得到 app/(后端) + src/(前端) + llm_module/(LLM模块) 的完整项目
+```
+
+### 方案 B：git worktree（日常开发推荐）
 
 ```bash
 # 1. 克隆 frontend 分支
@@ -54,24 +62,11 @@ JobHunter-backend/    # backend 分支
 └── (后端文件)
 ```
 
-### 方案 B：分别克隆到两个目录
+### 方案 C：分别克隆到两个目录
 
 ```bash
 git clone -b frontend https://github.com/Zzz-cy/JobHunter.git JobHunter-frontend
 git clone -b backend  https://github.com/Zzz-cy/JobHunter.git JobHunter-backend
-```
-
-### 方案 C：只看某一端
-
-```bash
-git clone -b frontend https://github.com/Zzz-cy/JobHunter.git  # 只要前端
-git clone -b backend  https://github.com/Zzz-cy/JobHunter.git  # 只要后端
-```
-
-### 方案 D：只要项目说明
-
-```bash
-git clone -b main https://github.com/Zzz-cy/JobHunter.git
 ```
 
 ---
@@ -139,6 +134,31 @@ python run.py
 默认监听 `http://127.0.0.1:8000`，API 文档：`http://127.0.0.1:8000/docs`。
 
 > 端口/Host 在 `.env` 的 `APP_HOST` / `APP_PORT` 修改。
+
+---
+
+## 二·五、LLM 模块启动（llm_model 分支）
+
+简历 AI 解析服务（Python/FastAPI，独立于主后端），主后端通过 HTTP 调用它解析简历。
+
+```bash
+cd llm_module
+
+# 依赖(与主后端一致装法)
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+
+# 配置 .env(从 .env.example 复制, 填大模型 API Key)
+# 默认主力: 智谱 glm-4-flash; 也可切换 DeepSeek/Kimi/通义(改 LLM_API_* 配置)
+
+# 启动(端口 8001, 不要用 5173 以免和前端冲突)
+python -m api.main
+```
+
+- 健康检查：`http://localhost:8001/health`
+- 简历解析接口：`POST /agents/analyze-resume`（由主后端自动调用，无需手动请求）
+- 主后端连接地址在 backend 的 `.env` 中配置：`LLM_SERVICE_URL=http://localhost:8001`
 
 ---
 
@@ -233,9 +253,10 @@ git config --global http.sslBackend schannel
 
 ### 分支划分
 
-- `main`：项目总览（仅 README.md）
+- `main`：全量集成（前端 + 后端 + LLM 模块），演示/上手用
 - `frontend`：前端代码
 - `backend`：后端代码
+- `llm_model`：LLM 简历解析模块
 
 ### 提交信息规范
 
