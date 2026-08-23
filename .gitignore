@@ -1,3 +1,4 @@
+ HEAD
 
 # 环境变量(含密码、密钥, 绝不提交)
 .env
@@ -66,10 +67,19 @@ storage/
 # Windows 误创建的 nul 文件
 nul
 
+
+# 仓库根 .gitignore (llm_model 分支)
+# 子目录 llm_module/ 内有更详细的 Python .gitignore
+
+# 前端依赖(frontend 分支留下的, 不该进本分支)
+node_modules/
+
+
 # OS
 .DS_Store
 Thumbs.db
 
+<<<<<<< HEAD
 # 临时调试脚本(本地测试数据库/service 用, 测完即删, 别提交)
 # 命名约定: test_*.py 或 scratch_*.py
 test_query.py
@@ -91,3 +101,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+=======
+>>>>>>> origin/llm_model
