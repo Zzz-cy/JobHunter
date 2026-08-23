@@ -65,6 +65,12 @@ async def login(user: LoginSchema, db: AsyncSession):
         # jwt,默认一天过期
         # sub 存数字 user.id(数据库主键), 便于跨服务统一用户标识
         # (LLM 服务也用数字 user_id, 两边类型一致才能正确识别用户)
-        token=create_access_token(data={"sub": str(existing.id)}),
+        # role/username 一并写入, 供 llm_module 纯验签后直接读取做权限判断
+        # (llm_module 不再查自己的 user 表, 必须从 token 里拿到 role)
+        token=create_access_token(data={
+            "sub": str(existing.id),
+            "role": existing.role,
+            "username": existing.nickname or existing.email or "",
+        }),
         user=user_out
     )

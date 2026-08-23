@@ -510,6 +510,7 @@ cd backend && python test_query.py
 
 - 数据库字段说明：`backend/db/DATABASE_SCHEMA.md`（单一真相源，改表必同步）
 - 知识图谱方案：`backend/docs/KNOWLEDGE_GRAPH.md`
+- 岗位推荐方案（简历→岗位匹配，技能+向量+LLM重排）：`backend/docs/RECOMMEND_SYSTEM.md`
 - 统一返回结构：`app/schemas/result.py`
 - 异常类：`app/core/exceptions.py`
 

@@ -155,3 +155,44 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 4. **数据库迁移**:目前没有 Alembic,改表结构直接改 `db/mysql/01_schema.sql` + 手动 `ALTER TABLE`
 5. **敏感配置走 .env**:密钥、数据库密码绝不硬编码,统一从 `settings` 读
 6. **文件上传走 `uploads/`**:目录已被 `.gitignore` 忽略,不会进 git
+
+---
+
+## 跨服务统一认证（backend ↔ llm_module）
+
+> 架构:**单点登录 + 共享密钥**。backend 是唯一认证中心,llm_module 只做纯验签。
+
+### 角色分工
+
+| 服务 | 职责 |
+|------|------|
+| **backend** | 唯一认证中心。注册/登录/签发 token,token 里写 `sub`(user.id)、`role`、`username` |
+| **llm_module** | 只验签,不查自己的 user 表。验签通过直接信任 token 里的身份信息 |
+
+### 关键约定
+
+1. **密钥统一**:两个服务用同一个环境变量 `JWT_SECRET_KEY`、同一个值(目前两边都是 `9a53...87444`)。JWT 是无状态验签,密钥不同则互相验签必失败。
+2. **算法统一**:都用 HS256。
+3. **token 载荷字段**(backend 签发时写入):
+   - `sub`:用户 id(字符串,数据库主键)—— 跨服务统一用户标识
+   - `role`:用户角色(`user`/`admin`)—— llm_module 做权限判断用
+   - `username`:昵称或邮箱
+   - `exp`:过期时间
+4. **llm_module 的 `/api/v1/auth/register|login|refresh` 已废弃**(返回 410),前端**只调 backend `/auth/login`**。
+
+### 前端调用流程
+
+```
+1. POST backend /auth/login  →  拿到 token
+2. 请求 llm_module 任意接口时,统一带请求头:
+     Authorization: Bearer <同一个 token>
+   (前端用一个 axios 拦截器塞 token 即可,llm_module 零改动)
+```
+
+### 改动落点
+
+- `backend/app/services/auth_service.py`:`login` 签发 token 时补 `role`/`username`
+- `backend/app/utils/jwtUtil.py`:`get_current_user` 仍查 backend 自己的 User 表(backend 有用户数据,查库更安全)
+- `llm_module-2/llm_module/services/auth_service.py`:`get_current_user` 改纯验签,不再 `db.get_user_by_id()`
+- `llm_module-2/llm_module/utils/config.py`:`AUTH_CONFIG.secret_key` 优先读 `JWT_SECRET_KEY`
+- `llm_module-2/llm_module/api/v1/auth_routes.py`:`register`/`login`/`refresh` 返回 410,`/me` 只返回 token 里的信息

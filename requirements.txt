@@ -32,6 +32,10 @@ neo4j==5.25.0
 #   pip install --only-binary :all: chromadb
 chromadb
 
+# ---------- 智谱 GLM(岗位推荐: 向量化 + LLM 重排) ----------
+# zhipuai: 官方 Python SDK, 封装了鉴权/重试
+zhipuai
+
 # ---------- 认证 ----------
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4

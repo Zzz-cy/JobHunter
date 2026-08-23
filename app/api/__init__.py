@@ -14,6 +14,7 @@ API 路由聚合包
 from app.api.auth import router as auth_router
 from app.api.crawl import router as crawl_router
 from app.api.jobs import router as jobs_router
+from app.api.recommend import router as recommend_router
 from app.api.resumes import router as resumes_router
 from app.api.user import router as user_router
 from app.api.stats import router as stats_router
@@ -28,5 +29,6 @@ routers = [
     crawl_router,
     stats_router,
     knowledge_graph_router,
+    recommend_router,
 ]
 __all__ = ["routers"]

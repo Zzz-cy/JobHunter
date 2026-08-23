@@ -59,6 +59,12 @@ media/
 *.sqlite3
 *.db
 
+# 向量库(ChromaDB 持久化文件, 138MB+ 二进制, 可用 scripts/build_job_vectors.py 重建)
+storage/
+
+# Windows 误创建的 nul 文件
+nul
+
 # OS
 .DS_Store
 Thumbs.db

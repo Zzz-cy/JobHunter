@@ -81,6 +81,18 @@ class Settings(BaseSettings):
         description="LLM 解析超时(秒), AI 解析慢要给足",
     )
 
+    # ---------- 智谱 GLM(岗位推荐功能专用) ----------
+    # 直连智谱 GLM: embedding-3 向量化(建库+召回) + glm-4-flash 对话(LLM重排/推荐理由)
+    ZHIPU_API_KEY: str = Field(default="", description="智谱开放平台 API Key")
+    ZHIPU_BASE_URL: str = Field(
+        default="https://open.bigmodel.cn/api/paas/v4/",
+        description="智谱 API 基址(默认官方, 可换私有化部署地址)",
+    )
+    ZHIPU_CHAT_MODEL: str = Field(default="glm-4-flash", description="对话模型(flash 免费且快)")
+    ZHIPU_EMBED_MODEL: str = Field(default="embedding-3", description="向量模型")
+    ZHIPU_EMBED_DIM: int = Field(default=2048, description="embedding-3 默认输出维度")
+    ZHIPU_TIMEOUT: int = Field(default=60, description="GLM API 超时(秒)")
+
     # ---------- 派生属性 ----------
     @property
     def MYSQL_DSN_ASYNC(self) -> str:
@@ -99,6 +111,15 @@ class Settings(BaseSettings):
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
             f"?charset=utf8mb4"
         )
+
+    @property
+    def CHROMA_PATH(self) -> Path:
+        """ChromaDB 文件型向量库的持久化目录(相对 backend/)。
+
+        用 Path 而非 str: 方便调用方直接 .mkdir(parents=True) 建目录。
+        不写绝对路径: 跟着 BASE_DIR 走, 项目移动后自动适配。
+        """
+        return BASE_DIR / "storage" / "chroma"
 
 
 @lru_cache
