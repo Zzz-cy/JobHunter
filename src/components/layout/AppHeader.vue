@@ -27,6 +27,10 @@
           <el-icon><MagicStick /></el-icon>
           <span>AI 求职顾问</span>
         </el-menu-item>
+        <el-menu-item index="/job-recommend">
+          <el-icon><Aim /></el-icon>
+          <span>岗位推荐</span>
+        </el-menu-item>
         <el-menu-item index="/resume">
           <el-icon><Document /></el-icon>
           <span>我的简历</span>

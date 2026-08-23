@@ -45,6 +45,14 @@ const routes = [
         meta: { title: 'AI 求职顾问', requiresAuth: true }
       },
       {
+        // 岗位推荐(简历→岗位匹配): 技能召回+向量召回+LLM重排
+        // 注意路径用 /job-recommend, 因为 /recommend 已被 AI 求职顾问(ChatView)占用
+        path: 'job-recommend',
+        name: 'JobRecommend',
+        component: () => import('@/views/RecommendView.vue'),
+        meta: { title: '岗位推荐', requiresAuth: true }
+      },
+      {
         path: 'admin',
         name: 'Admin',
         component: () => import('@/views/AdminView.vue'),
