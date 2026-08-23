@@ -1,0 +1,40 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "ik_smart_analyzer": { "type": "custom", "tokenizer": "ik_smart", "filter": ["lowercase"] },
+        "ik_max_analyzer":   { "type": "custom", "tokenizer": "ik_max_word", "filter": ["lowercase"] }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "company_id":    { "type": "long" },
+      "company_code":  { "type": "keyword" },
+      "name": {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "fields": {
+          "keyword": { "type": "keyword" },
+          "suggest": { "type": "completion", "analyzer": "ik_max_analyzer" }
+        }
+      },
+      "short_name":   { "type": "keyword" },
+      "industry_code": { "type": "keyword" },
+      "size":         { "type": "keyword" },
+      "stage":        { "type": "keyword" },
+      "city":         { "type": "keyword" },
+      "district":     { "type": "keyword" },
+      "welfare":      { "type": "keyword" },
+      "description": {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "search_analyzer": "ik_smart_analyzer"
+      },
+      "job_count":    { "type": "integer" },
+      "created_at":   { "type": "date", "format": "strict_date_optional_time||epoch_millis" }
+    }
+  }
+}

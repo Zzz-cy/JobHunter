@@ -1,0 +1,79 @@
+# 环境变量(含密码、密钥, 绝不提交)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志
+*.log
+logs/
+
+# 上传文件(用户简历等敏感数据)
+uploads/
+media/
+
+# 数据库
+*.sqlite3
+*.db
+
+# 向量库(ChromaDB 持久化文件, 138MB+ 二进制, 可用 scripts/build_job_vectors.py 重建)
+storage/
+
+# Windows 误创建的 nul 文件
+nul
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 临时调试脚本(本地测试数据库/service 用, 测完即删, 别提交)
+# 命名约定: test_*.py 或 scratch_*.py
+test_query.py
+test_*.py
+scratch_*.py
+tmp_*.py
+gen_test_resume.py
+test_resume.pdf

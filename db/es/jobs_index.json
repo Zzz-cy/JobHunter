@@ -1,0 +1,85 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "ik_smart_analyzer": {
+          "type": "custom",
+          "tokenizer": "ik_smart",
+          "filter": ["lowercase", "asciifolding"]
+        },
+        "ik_max_analyzer": {
+          "type": "custom",
+          "tokenizer": "ik_max_word",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "job_id":         { "type": "long" },
+      "job_code":       { "type": "keyword" },
+
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "search_analyzer": "ik_smart_analyzer",
+        "fields": {
+          "keyword": { "type": "keyword" },
+          "suggest": { "type": "completion", "analyzer": "ik_max_analyzer" }
+        }
+      },
+      "description_text": {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "search_analyzer": "ik_smart_analyzer"
+      },
+
+      "company_id":    { "type": "long" },
+      "company_name":  {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "company_size":  { "type": "keyword" },
+      "company_stage": { "type": "keyword" },
+
+      "city":          { "type": "keyword" },
+      "district":      { "type": "keyword" },
+
+      "salary_min":    { "type": "integer" },
+      "salary_max":    { "type": "integer" },
+      "salary_months": { "type": "short" },
+
+      "experience_req": { "type": "keyword" },
+      "education_req":  { "type": "keyword" },
+      "job_type":       { "type": "keyword" },
+
+      "skills":        { "type": "keyword" },
+      "skills_text":   {
+        "type": "text",
+        "analyzer": "ik_max_analyzer",
+        "search_analyzer": "ik_smart_analyzer"
+      },
+
+      "highlights":   { "type": "keyword" },
+      "welfare":      { "type": "keyword" },
+
+      "industry_code": { "type": "keyword" },
+
+      "publish_at":   { "type": "date", "format": "strict_date_optional_time||epoch_millis" },
+      "crawl_at":     { "type": "date", "format": "strict_date_optional_time||epoch_millis" },
+      "created_at":   { "type": "date", "format": "strict_date_optional_time||epoch_millis" },
+
+      "status":       { "type": "keyword" },
+      "source":       { "type": "keyword" },
+      "source_url":   { "type": "keyword", "index": false, "doc_values": false },
+
+      "quality_score": { "type": "float" },
+
+      "location":     { "type": "geo_point" }
+    }
+  }
+}
