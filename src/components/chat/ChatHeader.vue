@@ -18,13 +18,15 @@
         <div class="status-dot"></div>
         <span>{{ modelStatus }}</span>
       </div>
-      <router-link to="/admin" class="admin-link">📊</router-link>
+      <router-link v-if="isAdmin" to="/admin" class="admin-link" title="Agent 监控后台">📊</router-link>
     </div>
   </div>
 </template>
 
 <script setup>
+import { storeToRefs } from 'pinia'
 import { ROLE_OPTIONS, INDUSTRY_OPTIONS } from '@/composables/useChat'
+import { useUserStore } from '@/stores/user'
 
 defineProps({
   modelStatus: { type: String, default: '加载中...' },
@@ -36,6 +38,9 @@ defineEmits(['update:role', 'update:industry'])
 
 const roleOptions = ROLE_OPTIONS
 const industryOptions = INDUSTRY_OPTIONS
+
+// 监控后台入口只给管理员看
+const { isAdmin } = storeToRefs(useUserStore())
 </script>
 
 <style scoped>
