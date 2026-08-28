@@ -104,6 +104,38 @@
       </el-col>
     </el-row>
 
+    <!-- 图表区 3.5:技能需求演化(时序分析) -->
+    <el-row :gutter="20">
+      <el-col :span="24">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>技能需求演化</span>
+              <div class="trend-controls">
+                <el-select v-model="trendMonths" size="small" style="width: 100px" @change="renderSkillTrendChart">
+                  <el-option v-for="m in [3, 6, 9, 12]" :key="m" :value="m" :label="`近 ${m} 月`" />
+                </el-select>
+                <el-select
+                  v-model="selectedSkills"
+                  multiple
+                  filterable
+                  collapse-tags
+                  collapse-tags-tooltip
+                  size="small"
+                  style="width: 300px"
+                  placeholder="选择技能对比(默认热门 Top5)"
+                  @change="renderSkillTrendChart"
+                >
+                  <el-option v-for="name in skillOptions" :key="name" :value="name" :label="name" />
+                </el-select>
+              </div>
+            </div>
+          </template>
+          <div ref="skillTrendChartRef" class="chart-canvas"></div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 图表区 4:经验要求雷达图 -->
     <el-row :gutter="20">
       <el-col :span="12">
@@ -152,6 +184,12 @@ const trendChartRef = ref(null)
 const eduChartRef = ref(null)
 const expRadarChartRef = ref(null)
 const sourceChartRef = ref(null)
+const skillTrendChartRef = ref(null)
+
+// 技能需求演化(时序): 可选技能 + 当前选择 + 时间窗
+const skillOptions = ref([])
+const selectedSkills = ref([])
+const trendMonths = ref(6)
 
 // echarts 实例集合
 const charts = {}
@@ -286,6 +324,46 @@ const renderTrendChart = async () => {
   initChart('trend', trendChartRef.value, option)
 }
 
+// 技能需求演化(多技能 × 月度 折线, 时序分析核心图)
+const renderSkillTrendChart = async () => {
+  // 没选技能时清空图表, 不发请求
+  if (!selectedSkills.value.length) {
+    initChart('skillTrend', skillTrendChartRef.value, {
+      xAxis: { type: 'category', data: [] },
+      yAxis: { type: 'value' },
+      series: []
+    })
+    return
+  }
+  const params = {
+    skills: selectedSkills.value.join(','),
+    months: trendMonths.value
+  }
+  const data = await request.get('/stats/skill-trend', { params })
+  const option = {
+    tooltip: { trigger: 'axis' },
+    legend: { top: 0, type: 'scroll', textStyle: { fontSize: 11 } },
+    grid: { left: 50, right: 40, top: 40, bottom: 30 },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: data.month,
+      axisLabel: {
+        fontSize: 11,
+        hideOverlap: true,
+      },
+    },
+    yAxis: { type: 'value', name: '岗位数' },
+    series: (data.skills || []).map((name) => ({
+      name,
+      type: 'line',
+      smooth: true,
+      data: data.series[name] || []
+    }))
+  }
+  initChart('skillTrend', skillTrendChartRef.value, option)
+}
+
 const renderEduChart = async () => {
   const data = await request.get('/stats/education-distribution')
   const option = {
@@ -369,6 +447,15 @@ const loadAllCharts = async () => {
   try { renderSkillChart() } catch (e) { console.error('技能图失败:', e) }
   try { renderIndustryChart() } catch (e) { console.error('行业图失败:', e) }
   try { renderTrendChart() } catch (e) { console.error('趋势图失败:', e) }
+  // 技能需求演化: 先拿热门技能做选项, 默认勾选 Top5
+  try {
+    const hot = await request.get('/stats/skills/hot')
+    skillOptions.value = hot.name || []
+    if (!selectedSkills.value.length) {
+      selectedSkills.value = skillOptions.value.slice(0, 5)
+    }
+    await renderSkillTrendChart()
+  } catch (e) { console.error('技能趋势图失败:', e) }
   try { renderEduChart() } catch (e) { console.error('学历图失败:', e) }
   try { renderExpRadarChart() } catch (e) { console.error('经验图失败:', e) }
   try { renderSourceChart() } catch (e) { console.error('来源图失败:', e) }
@@ -450,6 +537,11 @@ onBeforeUnmount(() => {
   align-items: center;
   font-weight: 600;
   color: #303133;
+}
+
+.trend-controls {
+  display: flex;
+  gap: 8px;
 }
 
 .chart-canvas {

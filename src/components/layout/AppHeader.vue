@@ -23,10 +23,6 @@
           <el-icon><Search /></el-icon>
           <span>找职位</span>
         </el-menu-item>
-        <el-menu-item index="/recommend">
-          <el-icon><MagicStick /></el-icon>
-          <span>AI 求职顾问</span>
-        </el-menu-item>
         <el-menu-item index="/job-recommend">
           <el-icon><Aim /></el-icon>
           <span>岗位推荐</span>
@@ -39,9 +35,13 @@
           <el-icon><DataAnalysis /></el-icon>
           <span>数据分析</span>
         </el-menu-item>
-        <el-menu-item index="/admin" v-if="isAdmin">
-          <el-icon><DataBoard /></el-icon>
-          <span>Agent 监控后台</span>
+        <el-menu-item index="/recommend">
+          <el-icon><MagicStick /></el-icon>
+          <span>AI 求职顾问</span>
+        </el-menu-item>
+        <el-menu-item index="/knowledge-graph">
+          <el-icon><Connection /></el-icon>
+          <span>知识图谱</span>
         </el-menu-item>
         <el-menu-item index="/data-admin" v-if="isAdmin">
           <el-icon><DataLine /></el-icon>
