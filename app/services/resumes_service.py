@@ -263,9 +263,13 @@ async def save_parsed_result(db: AsyncSession, resume_id: int, parsed: dict) -> 
 
     # ---------- 4. 存技能(需查字典表归一) ----------
     # LLM 只返回技能名数组, 这里负责映射到标准 skill_id
+    # 按 skill_id 去重: LLM 可能返回重复技能, 或两个写法归一到同一字典技能
+    # (如 "Python" 和 "Python3" 都归到 SK_PY), 不去重会撞 uk_resume_skill 唯一键
+    seen_skill_ids: set[int] = set()
     for skill_name in parsed.get("skills", []):
         skill = await find_skill_by_name(db, skill_name)
-        if skill:
+        if skill and skill.id not in seen_skill_ids:
+            seen_skill_ids.add(skill.id)
             db.add(ResumeSkill(resume_id=resume_id, skill_id=skill.id))
         # 字典表没有的技能: 暂时跳过(以后扩充字典)
 

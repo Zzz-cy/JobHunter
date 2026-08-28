@@ -113,6 +113,79 @@ async def count_job_trend(db: AsyncSession):
     }
 
 
+async def count_skill_trend(db: AsyncSession, skills: list[str], months: int = 6):
+    """
+    技能需求月度趋势: 指定技能在近 N 个月每月出现的岗位数。
+
+    月份取数据里实际存在的最近 N 个月(publish_at 分组), 没有数据的月份不出现在横轴上。
+
+    Args:
+        skills: 技能名列表, 空则自动取热门技能前 5
+        months: 统计的月份数(3~12)
+
+    Returns:
+        {
+            "month": ["2026-03", ...],          # 横轴(旧→新)
+            "skills": ["Python", "Java", ...],   # 实际返回的技能
+            "series": {"Python": [10, 20, ...], ...}  # 每个技能按月的岗位数
+        }
+    """
+    month_expr = func.date_format(Job.publish_at, "%Y-%m")
+
+    # 未指定技能 → 取热门技能前 5 作为默认
+    if not skills:
+        hot_stmt = (
+            select(Skill.name)
+            .join(JobSkill, JobSkill.skill_id == Skill.id)
+            .group_by(Skill.id)
+            .order_by(desc(func.count()))
+            .limit(5)
+        )
+        skills = [row[0] for row in (await db.execute(hot_stmt)).all()]
+
+    # 横轴: 数据里实际存在的最近 N 个月(旧→新)
+    month_stmt = (
+        select(month_expr.label("month"))
+        .where(Job.publish_at.isnot(None))
+        .group_by("month")
+        .order_by(desc("month"))
+        .limit(months)
+    )
+    month_rows = list(reversed((await db.execute(month_stmt)).all()))
+    month_list = [row.month for row in month_rows]
+
+    # 逐月逐技能统计岗位需求数
+    stmt = (
+        select(
+            month_expr.label("month"),
+            Skill.name.label("skill"),
+            func.count().label("cnt"),
+        )
+        .join(JobSkill, JobSkill.job_id == Job.id)
+        .join(Skill, Skill.id == JobSkill.skill_id)
+        .where(
+            Job.publish_at.isnot(None),
+            Skill.name.in_(skills),
+        )
+        .group_by("month", "skill")
+    )
+    rows = (await db.execute(stmt)).all()
+
+    # (月份, 技能) → 数量 的查找表, 缺失月份补 0
+    count_map = {(row.month, row.skill): row.cnt for row in rows}
+
+    series = {
+        skill: [count_map.get((month, skill), 0) for month in month_list]
+        for skill in skills
+    }
+
+    return {
+        "month": month_list,
+        "skills": skills,
+        "series": series,
+    }
+
+
 async def count_industry_distribution(db: AsyncSession):
     """
     行业职位占比(按一级行业聚合, 二级自动归到父级)。

@@ -15,6 +15,7 @@
     {"code": 非零, "message": "提示", "data": null}
 """
 import logging
+import sys
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -22,6 +23,10 @@ from fastapi.responses import JSONResponse
 
 from app.core.exceptions import BizException
 from app.schemas.result import BizCode, Result
+
+# 接上 root handler, 未预期异常的堆栈才能落到 stderr(否则被 uvicorn 吞掉看不到)
+logging.basicConfig(level=logging.INFO, stream=sys.stderr,
+                    format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 logger = logging.getLogger(__name__)
 
