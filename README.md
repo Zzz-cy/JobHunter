@@ -13,8 +13,8 @@
 | 数据库 | MySQL 8 (aiomysql / PyMySQL) |
 | LLM 简历解析 | 大模型可切换：智谱 glm-4-flash（默认）/ DeepSeek / Kimi / 通义（在 `llm_module/.env` 配置） |
 | 向量检索 | ChromaDB（简历-JD 语义匹配 / 推荐系统） |
-| 图数据库 | Neo4j 5（知识图谱：技能关系 + 推荐拓展） |
-| 检索 | Elasticsearch 8 (规划中，暂用 MySQL LIKE) |
+| 图数据库 | Neo4j（岗位方向知识图谱：方向画像 + 相似方向） |
+| 检索 | Elasticsearch 8（职位全文检索） |
 | 认证 | JWT (python-jose + passlib) |
 
 ---
@@ -77,7 +77,8 @@ git clone -b backend  https://github.com/Zzz-cy/JobHunter.git JobHunter-backend
 
 - Python 3.10+
 - MySQL 8.x（需本地或远端可访问）
-- (可选) Elasticsearch 8、Neo4j —— 后续模块才需要
+- Elasticsearch 8（职位全文检索用）
+- Neo4j（知识图谱用，缺失时图谱页降级为演示数据，不影响其他功能）
 
 ### 2. 安装依赖
 
@@ -101,8 +102,11 @@ cp .env.example .env            # Windows 用: copy .env.example .env
 |---|---|
 | `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USER` / `MYSQL_PASSWORD` | MySQL 连接信息 |
 | `MYSQL_DATABASE` | 数据库名（默认 `jobhunter`，需先手动创建空库或由 init 脚本创建） |
-| `JWT_SECRET_KEY` | 生产环境务必改成 32+ 字符随机串 |
-| `ES_*` / `NEO4J_*` / `SPARK_*` | 后续模块启用时再填，暂可留空 |
+| `JWT_SECRET_KEY` | 生产环境务必改成 32+ 字符随机串（LLM 引擎验签也用这个，两边要一致） |
+| `ES_URL` / `ES_USERNAME` / `ES_PASSWORD` | Elasticsearch 连接信息 |
+| `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | Neo4j 连接信息 |
+| `ZHIPU_API_KEY` | 智谱 API Key（推荐的向量召回 + LLM 重排用） |
+| `LLM_SERVICE_URL` | LLM 引擎地址（默认 `http://localhost:8001`） |
 
 ### 4. 初始化数据库
 
@@ -117,7 +121,21 @@ python -m scripts.init_storage
 2. `db/mysql/02_seed.sql` —— 字典 + 测试账号
 3. `db/mysql/03_mock_data.sql` —— 假数据（前端联调用）
 
-### 5. 验证连接
+### 5. 初始化 ES 索引与 Neo4j 图谱（可选，用到对应功能再跑）
+
+```bash
+# ES: 建索引 + 同步职位数据(全文检索用)
+python -m scripts.init_es_index
+python -m scripts.sync_jobs_to_es
+
+# Neo4j: 从 db/neo4j/jobs.json 建岗位方向知识图谱(会问两遍 Neo4j 密码)
+python -m scripts.init_neo4j
+
+# ChromaDB: 构建岗位向量库(推荐系统语义召回用)
+python -m scripts.build_job_vectors
+```
+
+### 6. 验证连接
 
 ```bash
 python -m scripts.check_db
@@ -125,7 +143,7 @@ python -m scripts.check_db
 
 输出 `✅ 全部通过` 即配置成功。
 
-### 6. 启动服务
+### 7. 启动服务
 
 ```bash
 python run.py
@@ -235,13 +253,30 @@ git config --global http.sslBackend schannel
 | 路由 | 页面 | 需登录 |
 |---|---|---|
 | `/home` | 首页（搜索 + 热门） | 否 |
-| `/jobs` | 职位列表（多维筛选 + 分页） | 否 |
+| `/jobs` | 职位列表（ES 检索 + 多维筛选 + 分页） | 否 |
 | `/jobs/:id` | 职位详情 | 否 |
-| `/recommend` | 智能推荐（匹配度评分） | 是 |
-| `/resume` | 简历管理（上传 + 解析） | 是 |
-| `/dashboard` | 数据分析大盘（ECharts） | 否 |
+| `/job-recommend` | 岗位推荐（技能召回 + 向量召回 + LLM 重排，带匹配分与理由） | 是 |
+| `/resume` | 简历管理（上传 + AI 解析） | 是 |
+| `/dashboard` | 数据分析大盘（ECharts，含技能需求演化时序图） | 否 |
+| `/knowledge-graph` | 知识图谱（Neo4j 岗位方向画像，力导向图） | 否 |
+| `/recommend` | AI 求职顾问（对话式，管理员可从此进 Agent 监控后台） | 是 |
+| `/admin` | Agent 监控后台 | 管理员 |
+| `/data-admin` | 数据管理 | 管理员 |
 | `/profile` | 个人中心（求职进度看板） | 是 |
 | `/login` `/register` | 登录 / 注册 | 否 |
+
+### 准确率评测（可复现）
+
+`backend/evaluation/` 内置评测套件：10 份合成简历 + 标准答案 + 自动化脚本。
+
+```bash
+# 需先启动主后端(8000) + LLM引擎(8001)
+python evaluation/gen_resumes.py      # 生成测试简历(已内置, 一般不用重跑)
+python evaluation/eval_parse.py       # 简历解析评测 → report_parse.md
+python evaluation/eval_matching.py    # 人岗匹配评测 → report_matching.md
+```
+
+最近一次实测：简历解析综合字段准确率 **100%**（技能召回 94%），人岗匹配方向命中率 **100%**。
 
 ### 后端 API
 
