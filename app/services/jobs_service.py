@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.es import es_client, JOBS_INDEX
 from app.core.exceptions import NotFoundError
 from app.models import Job, Skill, Company, JobSkill, Application
 from app.schemas import JobSearchSchema
@@ -220,3 +221,88 @@ async def find_similar_jobs(db: AsyncSession, job_id: int):
     )
     result = await db.scalars(stmt)
     return result.unique().all()  # unique() 去重(selectin 会产生重复父行)
+
+
+# ES 版职位搜索(架构: ES 查 id + 排序, MySQL 取详情)
+def _build_es_query(params: JobSearchSchema) -> dict:
+    """把搜索入参翻译成 ES 的 DSL 查询体。
+
+    设计要点:
+        - keyword 放 must(参与相关度算分, 排序用 _score)
+        - 精确筛选放 filter(不算分, 可被 ES 缓存, 快)
+        - 排序: 有 keyword 按相关度, 无 keyword 按发布时间/薪资
+    """
+    must = []
+    # 基础过滤: 只搜在招职位(等价原 MySQL 的 status=='active')
+    filter = [{"term": {"job_status": "active"}}]
+
+    # ---- keyword: 多字段匹配, 标题权重×3(标题命中排最前, LIKE 做不到) ----
+    if params.keyword:
+        must.append({
+            "multi_match": {
+                "query": params.keyword,
+                "fields": ["title^3", "skills", "company_name", "description_text"],
+            }
+        })
+
+    # ---- 精确筛选(对应原 MySQL 的等值条件) ----
+    if params.city:
+        filter.append({"term": {"city": params.city}})
+    if params.experience:
+        filter.append({"term": {"experience_req": params.experience}})
+    if params.education:
+        filter.append({"term": {"education_req": params.education}})
+    if params.industry:
+        filter.append({"term": {"industry_code": params.industry}})
+    if params.source:
+        filter.append({"term": {"source": params.source}})
+
+    # ---- 薪资区间(复用 MySQL 版的解析逻辑, 两边口径一致) ----
+    sal_lo, sal_hi = _parse_salary_range(params.salary_range)
+    if sal_lo is not None:
+        filter.append({"range": {"salary_max": {"gte": sal_lo}}})
+    if sal_hi is not None:
+        filter.append({"range": {"salary_min": {"lte": sal_hi}}})
+
+    # ---- 排序 ----
+    if params.keyword:
+        # 有搜索词: 相关度优先, 同分看新鲜度
+        sort = [{"_score": "desc"}, {"publish_at": "desc"}]
+    elif params.sort == "salary":
+        sort = [{"salary_max": "desc"}]
+    else:  # default / latest
+        sort = [{"publish_at": "desc"}]
+
+    return {
+        "query": {"bool": {"must": must, "filter": filter}},
+        "sort": sort,
+        "from": params.offset,       # ES 的偏移量叫 from(等价 MySQL 的 offset)
+        "size": params.page_size,
+    }
+
+
+async def search_jobs_es(params: JobSearchSchema, db: AsyncSession) -> tuple[list[Job], int]:
+    """ES 版搜索: 关键词+筛选+排序+分页在 ES 完成, 回 MySQL 取完整详情。
+
+    Returns:
+        (当前页职位列表, 总数) — 与原 query() 返回结构完全一致, API 层无感
+    """
+    body = _build_es_query(params)
+    resp = es_client.search(index=JOBS_INDEX, body=body)
+
+    total = resp["hits"]["total"]["value"]
+    # ES 文档的 _id 就是 MySQL 主键(同步时指定的)
+    ids = [int(h["_id"]) for h in resp["hits"]["hits"]]
+    if not ids:
+        return [], 0
+
+    # 回 MySQL 批量取完整 ORM 对象(skills/company 走 selectin 预加载)
+    jobs_raw = (await db.scalars(
+        select(Job).where(Job.id.in_(ids))
+    )).unique().all()
+
+    # ⚠️ in_() 查回来的顺序是乱的, 必须按 ES 返回的顺序重排
+    # (ES 是按相关度/排序字段排好的, 不重排前端列表顺序就乱了)
+    job_map = {j.id: j for j in jobs_raw}
+    jobs = [job_map[i] for i in ids if i in job_map]
+    return jobs, total
