@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     ES_USERNAME: str = Field(default="elastic")
     ES_PASSWORD: str = Field(default="")
     ES_VERIFY_CERTS: bool = Field(default=False)
+    # 职位搜索引擎: es(默认, 分词+相关度) / mysql(LIKE 降级用)
+    # ES 未启动时接口会自动降级到 MySQL, 不影响可用性
+    SEARCH_ENGINE: str = Field(default="es", description="职位搜索引擎: es / mysql")
 
     # ---------- Neo4j ----------
     NEO4J_URI: str = Field(default="bolt://127.0.0.1:7687")

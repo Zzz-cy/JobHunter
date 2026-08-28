@@ -1,0 +1,207 @@
+[
+  {
+    "file": "resume_01_liwei.pdf",
+    "name": "李伟",
+    "gender": 0,
+    "age": 28,
+    "phone": "13812340001",
+    "email": "liwei@example.com",
+    "city": "北京",
+    "work_years": 5,
+    "education": "本科",
+    "intent": "Python 后端工程师",
+    "skills": [
+      "Python",
+      "Django",
+      "MySQL",
+      "Redis",
+      "Docker"
+    ],
+    "exp_count": 2,
+    "latest_company": "字节跳动"
+  },
+  {
+    "file": "resume_02_wangfang.pdf",
+    "name": "王芳",
+    "gender": 1,
+    "age": 26,
+    "phone": "13912340002",
+    "email": "wangfang@example.com",
+    "city": "上海",
+    "work_years": 3,
+    "education": "本科",
+    "intent": "前端开发工程师",
+    "skills": [
+      "JavaScript",
+      "Vue",
+      "React",
+      "CSS"
+    ],
+    "exp_count": 2,
+    "latest_company": "拼多多"
+  },
+  {
+    "file": "resume_03_zhangpeng.pdf",
+    "name": "张鹏",
+    "gender": 0,
+    "age": 31,
+    "phone": "13612340003",
+    "email": "zhangpeng@example.com",
+    "city": "深圳",
+    "work_years": 7,
+    "education": "硕士",
+    "intent": "Java 后端开发工程师",
+    "skills": [
+      "Java",
+      "Spring Boot",
+      "MySQL",
+      "Redis",
+      "Kafka"
+    ],
+    "exp_count": 2,
+    "latest_company": "腾讯科技(深圳)有限公司"
+  },
+  {
+    "file": "resume_04_chenjing.pdf",
+    "name": "陈静",
+    "gender": 1,
+    "age": 27,
+    "phone": "13712340004",
+    "email": "chenjing@example.com",
+    "city": "杭州",
+    "work_years": 4,
+    "education": "本科",
+    "intent": "数据分析师",
+    "skills": [
+      "Python",
+      "SQL",
+      "Excel",
+      "Tableau",
+      "数据分析"
+    ],
+    "exp_count": 2,
+    "latest_company": "阿里巴巴集团"
+  },
+  {
+    "file": "resume_05_liuyang.pdf",
+    "name": "刘洋",
+    "gender": 0,
+    "age": 29,
+    "phone": "13512340005",
+    "email": "liuyang@example.com",
+    "city": "北京",
+    "work_years": 6,
+    "education": "硕士",
+    "intent": "算法工程师",
+    "skills": [
+      "Python",
+      "PyTorch",
+      "机器学习",
+      "深度学习",
+      "TensorFlow"
+    ],
+    "exp_count": 2,
+    "latest_company": "百度在线网络技术(北京)有限公司"
+  },
+  {
+    "file": "resume_06_zhaolei.pdf",
+    "name": "赵磊",
+    "gender": 0,
+    "age": 25,
+    "phone": "15812340006",
+    "email": "zhaolei@example.com",
+    "city": "成都",
+    "work_years": 3,
+    "education": "大专",
+    "intent": "测试工程师",
+    "skills": [
+      "Python",
+      "Selenium",
+      "自动化测试",
+      "Linux"
+    ],
+    "exp_count": 2,
+    "latest_company": "成都极米科技股份有限公司"
+  },
+  {
+    "file": "resume_07_sunyue.pdf",
+    "name": "孙悦",
+    "gender": 1,
+    "age": 28,
+    "phone": "15012340007",
+    "email": "sunyue@example.com",
+    "city": "广州",
+    "work_years": 5,
+    "education": "本科",
+    "intent": "大数据开发工程师",
+    "skills": [
+      "Hadoop",
+      "Spark",
+      "Flink",
+      "Kafka",
+      "SQL"
+    ],
+    "exp_count": 2,
+    "latest_company": "网易(杭州)网络有限公司"
+  },
+  {
+    "file": "resume_08_zhoujie.pdf",
+    "name": "周杰",
+    "gender": 0,
+    "age": 27,
+    "phone": "15112340008",
+    "email": "zhoujie@example.com",
+    "city": "北京",
+    "work_years": 4,
+    "education": "本科",
+    "intent": "运维开发工程师",
+    "skills": [
+      "Linux",
+      "Docker",
+      "Kubernetes",
+      "Shell",
+      "Git"
+    ],
+    "exp_count": 2,
+    "latest_company": "京东集团股份有限公司"
+  },
+  {
+    "file": "resume_09_wumin.pdf",
+    "name": "吴敏",
+    "gender": 1,
+    "age": 29,
+    "phone": "18612340009",
+    "email": "wumin@example.com",
+    "city": "上海",
+    "work_years": 6,
+    "education": "本科",
+    "intent": "产品经理",
+    "skills": [
+      "产品经理",
+      "需求分析",
+      "项目管理"
+    ],
+    "exp_count": 2,
+    "latest_company": "上海哔哩哔哩科技有限公司"
+  },
+  {
+    "file": "resume_10_zhengqiang.pdf",
+    "name": "郑强",
+    "gender": 0,
+    "age": 23,
+    "phone": "13412340010",
+    "email": "zhengqiang@example.com",
+    "city": "武汉",
+    "work_years": 0,
+    "education": "本科",
+    "intent": "C++ 开发工程师(应届)",
+    "skills": [
+      "C++",
+      "数据结构",
+      "算法",
+      "Git"
+    ],
+    "exp_count": 1,
+    "latest_company": "小米科技有限责任公司"
+  }
+]

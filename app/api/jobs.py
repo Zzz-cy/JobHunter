@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models import Job, Industry, Skill, Application, JobSkill
 from app.schemas import Result, PageResult, JobSearchSchema, JobOut
 from app.schemas.jobs import JobDetailOut, IndustryOut
-from app.services.jobs_service import query, favorite_job, unfavorite_job, submit_application, find_similar_jobs
+from app.services.jobs_service import query, search_jobs_es, favorite_job, unfavorite_job, submit_application, find_similar_jobs
 from app.utils.jwtUtil import get_current_user
 
 # 加上属性所有API都要登录才能访问 dependencies=[Depends(get_current_user)]
@@ -20,8 +21,21 @@ router = APIRouter(prefix="/jobs", tags=["工作"])
 async def get_page(job: JobSearchSchema = Depends(), db: AsyncSession = Depends(get_db)):
     """
     职位搜索(分页)。
+
+    引擎选择(.env 的 SEARCH_ENGINE):
+        - es(默认): ES 分词+相关度排序, 标题命中排最前
+        - mysql:   LIKE 模糊匹配(降级方案)
+    ES 未启动时自动降级 MySQL, 接口不受影响。
     """
-    jobs, total = await query(job, db)
+    if settings.SEARCH_ENGINE == "es":
+        try:
+            jobs, total = await search_jobs_es(job, db)
+        except Exception:
+            # ES 挂了/没启动/超时 → 自动降级 MySQL
+            jobs, total = await query(job, db)
+    else:
+        jobs, total = await query(job, db)
+
     items = [JobOut.model_validate(j) for j in jobs]
     page_result = PageResult(items=items, total=total, page=job.page, page_size=job.page_size)
     return Result.success_page(page_result)
