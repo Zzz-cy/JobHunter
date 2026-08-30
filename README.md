@@ -19,59 +19,35 @@
 
 ---
 
-## 仓库结构（按分支拆分）
+## 仓库结构（单分支 main）
 
-| 分支 | 内容 |
-|---|---|
-| `main` | **全量集成**（前端 + 后端 + LLM 模块 + 本文档） |
-| `frontend` | 前端代码 |
-| `backend` | 后端代码 |
-| `llm_model` | LLM 简历解析模块 |
+> **协作模式**：项目前后端曾按分支分离开发（frontend / backend / llm_model），
+> 已全部合并进 `main`。**现在统一在 main 分支开发与提交**，克隆即得完整项目。
 
-> `main` 是三个功能分支的合并集成版，克隆即得完整项目（答辩演示 / 新人上手用）。
-> **日常开发仍在各自分支进行**（改哪端就拉哪个分支），定期把功能分支合并回 `main`。
+```
+JobHunter/  (main 分支)
+├── app/              后端 FastAPI(含 core/api/services/models)
+├── db/               建表脚本 + 数据文件 + 文档(ES/爬虫/Schema)
+├── docs/             开发文档
+├── evaluation/       评测套件(简历解析/人岗匹配, 含测试简历与报告)
+├── scripts/          同步/初始化脚本(ES/Neo4j/向量库/MySQL导入)
+├── src/ index.html package.json   前端 Vue 3
+├── llm_module/       LLM 简历解析服务(独立 FastAPI, 端口 8001)
+└── requirements.txt run.py        后端依赖与入口
+```
 
 ---
 
 ## 一、克隆代码
 
-### 方案 A：直接克隆 main（拿全量代码，推荐演示/上手）
-
 ```bash
-git clone -b main https://github.com/Zzz-cy/JobHunter.git
+git clone https://github.com/Zzz-cy/JobHunter.git
 # 得到 app/(后端) + src/(前端) + llm_module/(LLM模块) 的完整项目
-```
-
-### 方案 B：git worktree（日常开发推荐）
-
-```bash
-# 1. 克隆 frontend 分支
-git clone -b frontend https://github.com/Zzz-cy/JobHunter.git JobHunter-frontend
-cd JobHunter-frontend
-
-# 2. 把 backend 分支检出到同级目录
-git worktree add ../JobHunter-backend backend
-```
-
-最终目录结构（两个目录并列）：
-
-```
-JobHunter-frontend/   # frontend 分支
-└── (前端文件)
-JobHunter-backend/    # backend 分支
-└── (后端文件)
-```
-
-### 方案 C：分别克隆到两个目录
-
-```bash
-git clone -b frontend https://github.com/Zzz-cy/JobHunter.git JobHunter-frontend
-git clone -b backend  https://github.com/Zzz-cy/JobHunter.git JobHunter-backend
 ```
 
 ---
 
-## 二、后端启动（backend 分支）
+## 二、后端启动
 
 ### 1. 环境要求
 
@@ -155,7 +131,7 @@ python run.py
 
 ---
 
-## 二·五、LLM 模块启动（llm_model 分支）
+## 二·五、LLM 模块启动
 
 简历 AI 解析服务（Python/FastAPI，独立于主后端），主后端通过 HTTP 调用它解析简历。
 
@@ -180,7 +156,7 @@ python -m api.main
 
 ---
 
-## 三、前端启动（frontend 分支）
+## 三、前端启动
 
 ### 1. 环境要求
 
@@ -276,7 +252,7 @@ python evaluation/eval_parse.py       # 简历解析评测 → report_parse.md
 python evaluation/eval_matching.py    # 人岗匹配评测 → report_matching.md
 ```
 
-最近一次实测：简历解析综合字段准确率 **100%**（技能召回 94%），人岗匹配方向命中率 **100%**。
+最近一次实测（16 份测试简历，含 6 份高难度样本）：简历解析综合字段准确率 **95.8%**，人岗匹配 M1 命中率 **90.6%**、Top1 相关率 **100%**。详见 `evaluation/report_parse.md` 与 `report_matching.md`。
 
 ### 后端 API
 
@@ -284,14 +260,10 @@ python evaluation/eval_matching.py    # 人岗匹配评测 → report_matching.m
 
 ---
 
-## 六、分支与协作
+## 六、团队协作（单分支 main）
 
-### 分支划分
-
-- `main`：全量集成（前端 + 后端 + LLM 模块），演示/上手用
-- `frontend`：前端代码
-- `backend`：后端代码
-- `llm_model`：LLM 简历解析模块
+> 项目前期按 frontend / backend / llm_model 分支分离开发，现已全部合并进 `main`。
+> **统一在 main 分支提交**，无需切分支、无需多目录。
 
 ### 提交信息规范
 
@@ -305,51 +277,32 @@ python evaluation/eval_matching.py    # 人岗匹配评测 → report_matching.m
 | `refactor` | 重构 |
 | `chore` | 杂项（依赖、配置等） |
 
-### 日常开发流程（多人协作）
-
-**完整推荐流程：**
+### 日常开发流程（多人协作，单分支）
 
 ```bash
-# 0. 切换到要修改的分支/仓库
-#    本项目前后端分别在 frontend 和 backend 两个独立目录里
-#    改哪一端,就 cd 到对应目录
-cd /c/frontend    # 改前端
-# 或
-cd /c/backend     # 改后端
+cd JobHunter    # 仓库根目录(改前端后端都在这里)
 
-# 0.1 确认当前分支正确(协作者首次拉代码后建议执行)
-git branch               # 查看当前分支
-# frontend 目录下应在 frontend 分支
-# backend  目录下应在 backend  分支
-# 如果不对,切过去:
-git checkout frontend    # 或 git checkout backend
-
-# 1. 开始干活前(每天早上 / 每次切换工作时)
+# 1. 开始干活前先拉最新
 git pull
 
-# 2. 写代码...
-# (改文件)
+# 2. 写代码...(改文件)
 
 # 3. 提交前再拉一次,避免和队友刚推的代码冲突
 git pull
 
-# 4. 看一眼要提交哪些文件(防止误传)
+# 4. 看一眼要提交哪些文件(防止误传,尤其注意别把 .env/数据文件带进来)
 git status
 
-# 5. 确认无误后加 + 提交 + 推送
+# 5. 确认无误后提交 + 推送
 git add .
 git commit -m "feat: 描述你改了啥"
 git push
 ```
 
-> ⚠️ **重要**：本项目前后端分别在 `frontend` 和 `backend` 两个独立目录里。
-> - 改前端 → 在 `frontend/` 目录下操作（对应 `frontend` 分支）
-> - 改后端 → 在 `backend/` 目录下操作（对应 `backend` 分支）
-
 ### 为什么要先拉再提交
 
 队友可能在你写代码期间推了新代码。不拉就 push，会被拒绝（non-fast-forward）。
-提前拉能尽早发现冲突，避免白干。
+提前拉能尽早发现冲突，避免白干。单分支模式下这一点尤其重要——**所有人都在 main 上，冲突概率比分支模式高**，勤 pull 是最有效的预防。
 
 ### 常用场景
 
