@@ -26,7 +26,9 @@ print("找到数据文件：", JSON_FILE)
 URI = "bolt://localhost:7687"
 USER = "neo4j"
 
-password = getpass("请输入Neo4j密码：")
+# 优先环境变量(后台/一键同步时由 service 注入, 无终端也不会卡住);
+# 手动跑脚本且没配环境变量时才交互输入
+password = os.getenv("NEO4J_PASSWORD") or getpass("请输入Neo4j密码：")
 
 
 # ==================================================
