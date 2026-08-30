@@ -157,46 +157,34 @@
           <template #header>
             <div class="card-title">
               <el-icon color="#e6a23c"><InfoFilled /></el-icon>
-              解析说明
+              上传说明
             </div>
           </template>
-          <el-timeline>
-            <el-timeline-item type="primary" timestamp="步骤 1">
-              <strong>文件上传</strong>
-              <p>支持 PDF / Word / 图片,文件存于服务器,仅本人可下载</p>
-            </el-timeline-item>
-            <el-timeline-item type="success" timestamp="步骤 2">
-              <strong>OCR 文字识别</strong>
-              <p>讯飞文档解析 API 识别图片和扫描件中的文字</p>
-            </el-timeline-item>
-            <el-timeline-item type="warning" timestamp="步骤 3">
-              <strong>NER 字段抽取</strong>
-              <p>HanLP + 自定义模型抽取工作经历、教育、技能等结构化字段</p>
-            </el-timeline-item>
-            <el-timeline-item type="danger" timestamp="步骤 4">
-              <strong>大模型语义理解</strong>
-              <p>讯飞星火做复杂语义分析,识别技能熟练度、年限</p>
-            </el-timeline-item>
-            <el-timeline-item type="info" timestamp="步骤 5">
-              <strong>技能归一化</strong>
-              <p>把抽取的技能 mention 映射到技能字典的标准 ID</p>
-            </el-timeline-item>
-          </el-timeline>
+          <ul class="tip-list">
+            <li><strong>支持格式</strong>：PDF、PNG、JPG 图片</li>
+            <li><strong>文件大小</strong>：单个文件不超过 10MB</li>
+            <li><strong>推荐用 PDF</strong>：文字识别最准，解析效果最好</li>
+          </ul>
+          <el-divider />
+          <el-steps direction="vertical" :active="3" class="upload-steps">
+            <el-step title="① 选择文件" description="拖拽到上传区,或点击选择" />
+            <el-step title="② 起个名字(可选)" description="如「后端方向」「前端方向」" />
+            <el-step title="③ 点击开始上传解析" description="约需 1 分钟,完成后自动展示技能标签" />
+          </el-steps>
         </el-card>
 
         <el-card class="tip-card" shadow="never">
           <template #header>
             <div class="card-title">
               <el-icon color="#409eff"><Key /></el-icon>
-              使用提示
+              常见问题
             </div>
           </template>
           <ul class="tip-list">
-            <li>建议上传 PDF 格式,解析效果最佳</li>
-            <li>可上传多份简历对应不同岗位方向</li>
-            <li>设为默认的简历将用于首页推荐</li>
-            <li>解析失败可重新解析,不会重复计费</li>
-            <li>文件安全存储,仅你本人可见</li>
+            <li><strong>解析失败？</strong>在简历卡片菜单里选「重新解析」即可</li>
+            <li><strong>可以传几份？</strong>多份简历可对应不同岗位方向</li>
+            <li><strong>默认简历</strong>：设为默认的那份将用于智能推荐</li>
+            <li><strong>隐私安全</strong>：文件仅你本人可见、可删除</li>
           </ul>
         </el-card>
       </el-col>
@@ -310,7 +298,8 @@ const viewDetail = async (r) => {
 }
 
 const useForRecommend = (r) => {
-  router.push({ path: '/recommend', query: { resumeId: r.id } })
+  // 注意: 岗位推荐页是 /job-recommend (/recommend 已被 AI 求职顾问占用)
+  router.push({ path: '/job-recommend', query: { resumeId: r.id } })
 }
 
 const handleCommand = async (cmd, r) => {
@@ -528,5 +517,13 @@ onMounted(() => {
   color: #606266;
   font-size: 13px;
   line-height: 1.8;
+}
+
+.upload-steps :deep(.el-step__title) {
+  font-size: 13px;
+}
+
+.upload-steps :deep(.el-step__description) {
+  font-size: 12px;
 }
 </style>

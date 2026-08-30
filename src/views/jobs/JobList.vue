@@ -289,7 +289,8 @@ const goFavorites = () => router.push({ path: '/profile', query: { tab: 'favorit
 const goApplications = () => router.push({ path: '/profile', query: { tab: 'jobs' } })
 
 const goResume = () => router.push('/resume')
-const goRecommend = () => router.push('/recommend')
+// 注意: 岗位推荐页是 /job-recommend (/recommend 已被 AI 求职顾问占用)
+const goRecommend = () => router.push('/job-recommend')
 
 import { onMounted } from 'vue'
 onMounted(async () => {

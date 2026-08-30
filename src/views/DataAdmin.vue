@@ -45,12 +45,12 @@
       </div>
     </el-card>
 
-    <!-- 导入操作 -->
+    <!-- 同步操作 -->
     <el-card class="action-card" shadow="never">
       <template #header>
         <div class="card-title">
           <el-icon color="#e6a23c"><UploadFilled /></el-icon>
-          导入操作
+          同步操作
         </div>
       </template>
 
@@ -61,79 +61,90 @@
         show-icon
       >
         <template #title>
-          点击「同步数据」会把上述文件导入数据库。
-          已存在的职位会自动跳过,已存在的公司会自动补全缺失字段,可重复点击。
+          点击「一键同步所有库」依次完成: MySQL 导入 → ES 同步 → 向量库 → 知识图谱。
+          某个库未启动只标记该步失败, 不影响其他库。
         </template>
       </el-alert>
 
       <div class="action-row">
         <el-button
-          type="primary"
+          type="success"
           size="large"
-          :loading="importing"
-          :disabled="!preview.exists || importing"
-          @click="handleImport"
+          :loading="syncAll.running"
+          :disabled="!preview.exists || syncAll.running"
+          @click="handleSyncAll"
         >
-          <el-icon v-if="!importing"><Upload /></el-icon>
-          {{ importing ? '导入中...' : '同步爬虫数据' }}
+          <el-icon v-if="!syncAll.running"><MagicStick /></el-icon>
+          {{ syncAll.running ? '全库同步中...' : '一键同步所有库' }}
         </el-button>
 
-        <el-button size="large" @click="loadPreview" :disabled="importing">
+        <el-button size="large" @click="loadPreview" :disabled="syncAll.running">
           查看最新状态
         </el-button>
       </div>
 
-      <!-- 导入状态 -->
-      <div class="import-status" v-if="importStatus">
+      <!-- 四库同步进度 -->
+      <div class="sync-steps" v-if="syncAll.steps && syncAll.steps.length">
+        <div v-for="s in syncAll.steps" :key="s.key" class="sync-step-item">
+          <el-tag
+            size="small"
+            :type="{ pending: 'info', running: 'warning', done: 'success', failed: 'danger' }[s.status]"
+          >
+            {{ { pending: '待开始', running: '进行中', done: '完成', failed: '失败' }[s.status] }}
+          </el-tag>
+          <span class="step-name">{{ s.name }}</span>
+          <span class="step-msg" :class="s.status">{{ s.message }}</span>
+        </div>
         <el-alert
-          :type="importStatus.type"
-          :title="importStatus.title"
-          :description="importStatus.desc"
+          v-if="syncAll.message"
+          :type="syncAll.running ? 'warning' : 'success'"
+          :title="syncAll.message"
           show-icon
           :closable="false"
+          class="sync-summary"
         />
       </div>
-    </el-card>
-
-    <!-- 说明 -->
-    <el-card class="tip-card" shadow="never">
-      <template #header>
-        <div class="card-title">
-          <el-icon color="#909399"><InfoFilled /></el-icon>
-          工作原理
-        </div>
-      </template>
-      <el-timeline>
-        <el-timeline-item type="primary" timestamp="步骤 1">
-          <strong>爬虫采集</strong>
-          <p>爬虫(独立项目)抓取招聘网站数据,输出 JSON 文件</p>
-        </el-timeline-item>
-        <el-timeline-item type="success" timestamp="步骤 2">
-          <strong>放置文件</strong>
-          <p>爬虫把 <code>jobs_raw.json</code> 放到后端 <code>backend/db/data/</code></p>
-        </el-timeline-item>
-        <el-timeline-item type="warning" timestamp="步骤 3">
-          <strong>手动同步</strong>
-          <p>点击上方按钮触发导入:公司去重、行业归一化、技能关联、防撞码入库</p>
-        </el-timeline-item>
-        <el-timeline-item type="danger" timestamp="步骤 4">
-          <strong>数据可用</strong>
-          <p>导入完成后,职位列表/搜索/推荐即可使用最新数据</p>
-        </el-timeline-item>
-      </el-timeline>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const loadingPreview = ref(false)
-const importing = ref(false)
 const preview = ref({ exists: false })
-const importStatus = ref(null)
+
+// ---------- 一键全库同步 ----------
+const syncAll = ref({ running: false, steps: [] })
+let syncTimer = null
+
+const loadSyncStatus = async () => {
+  try {
+    const res = await request.get('/crawl/sync-status')
+    syncAll.value = res
+    // 运行中每 5 秒轮询, 结束自动停
+    if (syncTimer) clearInterval(syncTimer)
+    if (res.running) {
+      syncTimer = setInterval(loadSyncStatus, 5000)
+    }
+  } catch (e) { /* 静默 */ }
+}
+
+const handleSyncAll = async () => {
+  try {
+    const res = await request.post('/crawl/sync-all')
+    ElMessage.success('全库同步已启动(约2-5分钟)')
+    syncAll.value = res
+    if (syncTimer) clearInterval(syncTimer)
+    syncTimer = setInterval(loadSyncStatus, 5000)
+  } catch (e) { /* 409/404 拦截器已提示 */ }
+}
+
+onBeforeUnmount(() => {
+  if (syncTimer) clearInterval(syncTimer)
+})
 
 // 加载文件预览
 const loadPreview = async () => {
@@ -148,35 +159,9 @@ const loadPreview = async () => {
   }
 }
 
-// 触发导入
-const handleImport = async () => {
-  importing.value = true
-  importStatus.value = null
-  try {
-    const res = await request.post('/crawl/import')
-    ElMessage.success('导入任务已启动,后台执行中(约1分钟)')
-    // 后台任务约需 1 分钟,这里立即返回,提示用户等待
-    importStatus.value = {
-      type: 'warning',
-      title: '导入任务已启动',
-      desc: '后台正在执行(约1分钟)。完成后可直接去职位列表查看。期间可点击「查看最新状态」刷新。',
-    }
-    // 60 秒后自动清除"导入中"提示,允许再次操作
-    setTimeout(() => {
-      importing.value = false
-    }, 60000)
-  } catch (e) {
-    importing.value = false
-    importStatus.value = {
-      type: 'error',
-      title: '导入失败',
-      desc: e.message || '请检查后端日志',
-    }
-  }
-}
-
 onMounted(() => {
   loadPreview()
+  loadSyncStatus()   // 刷新页面也能看到进行中的同步进度
 })
 </script>
 
@@ -204,6 +189,40 @@ onMounted(() => {
 .action-card,
 .tip-card {
   margin-bottom: 16px;
+}
+
+.sync-steps {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+
+.sync-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.step-name {
+  font-weight: 500;
+  color: #303133;
+  min-width: 100px;
+}
+
+.step-msg {
+  color: #909399;
+  font-size: 12px;
+}
+
+.step-msg.failed {
+  color: #f56c6c;
+}
+
+.sync-summary {
+  margin-top: 8px;
 }
 
 .card-title {
