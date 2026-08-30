@@ -196,29 +196,9 @@ npm run preview     # 本地预览构建产物
 
 ## 四、常见问题
 
-**Q：`git push` 报 `ssh: connect to host github.com port 22: Connection refused`**
-
-22 端口被封，改用 HTTPS：
-
-```bash
-git remote set-url origin https://github.com/Zzz-cy/JobHunter.git
-```
-
-**Q：HTTPS 推送报 `SSL certificate ... unable to get local issuer certificate`**
-
-Windows 上 OpenSSL 证书问题，改用 schannel：
-
-```bash
-git config --global http.sslBackend schannel
-```
-
 **Q：前端启动后接口全部 404 / 跨域**
 
 确认后端已启动且端口是 8000；若改过端口，同步改 `vite.config.js`。
-
-**Q：`init_storage` 报 Access denied**
-
-`.env` 里的 `MYSQL_USER` / `MYSQL_PASSWORD` 不对，或该账号没有 `CREATE` 权限。
 
 ---
 
