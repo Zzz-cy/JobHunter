@@ -123,12 +123,12 @@ RESUME_PARSE_PROMPT = """你是一位专业的简历解析助手。请从以下�
 3. age: 年龄（整数，抽不到 null）
 4. phone / email: 联系方式（抽不到 null）
 5. city: 当前所在城市
-6. work_years: 工作年限（整数）
+6. work_years: 工作年限（整数）。简历直接写年限则用之；未写则按「所有工作经历起止时间的总跨度」推算（含多段经历累加，如 2020.07-2022.08 与 2022.09-至今 合计约 4 年）；应届/无经历为 0
 7. education: 最高学历，取值之一：大专/本科/硕士/博士
 8. expect_salary_min / expect_salary_max: 期望薪资上下限（元/月，整数）
 9. expect_city: 期望工作城市
 10. expect_job: 期望岗位
-11. skills: 技能名称数组（中英文均可，如 ["Python","Docker","MySQL"]）
+11. skills: 技能名称数组（中英文均可，如 ["Python","Docker","MySQL"]）。必须保留简历中的具体技术名，禁止泛化：写"MySQL"抽"MySQL"而非"SQL"；写"Spring Boot"抽"Spring Boot"而非"Java"；写"Vue.js"抽"Vue.js"。技能可从工作/项目描述中提取，不只看技能栏
 12. experiences: 工作经历数组，每项含 company_name(公司)、title(职位)、start_date(YYYY-MM-DD)、end_date(YYYY-MM-DD，在职则 null)、description(工作内容)、is_current(0/1)
 13. educations: 教育经历数组，每项含 school(学校)、major(专业)、degree(学历)、start_date、end_date
 
