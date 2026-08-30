@@ -1,24 +1,22 @@
-"""爬虫数据导入接口
-
-用途: 给前端一个"同步爬虫数据"按钮, 手动触发数据导入。
-      替代之前"定时读固定文件"的方案(定时读一个不变的文件没意义)。
+"""爬虫数据管理接口
 
 接口:
-    POST /crawl/import   读 jobs_raw.json 并入库(幂等: 已存在的跳过)
-    GET  /crawl/preview  预览文件状态(条数/字段填充率), 不入库, 给前端展示用
+    GET  /crawl/preview      预览数据文件状态(条数/字段填充率), 给前端展示用
+    POST /crawl/sync-all     一键同步四个库(MySQL→ES→ChromaDB→Neo4j, 后台执行)
+    GET  /crawl/sync-status  查一键同步进度(前端轮询)
+
+(MySQL 导入已并入 sync-all 第一步, 原单独的 /import 接口已移除)
 """
 import json
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.database import get_db
 from app.schemas import Result
+from app.services.sync_all_service import get_sync_status, run_sync_all
 from app.utils.jwtUtil import require_admin
-from app.utils.jsonToMysqlUtil import json_to_mysql
 
 router = APIRouter(prefix="/crawl", tags=["爬虫数据管理"])
 
@@ -60,41 +58,43 @@ async def preview_crawl_data(_=Depends(require_admin)):
     }, message="数据文件就绪")
 
 
-@router.post("/import", response_model=Result[dict], summary="手动触发爬虫数据导入")
-async def import_crawl_data(
+# ---------- 一键全库同步 ----------
+
+@router.post("/sync-all", response_model=Result[dict], summary="一键同步所有库")
+async def sync_all_stores(
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
     _=Depends(require_admin),
 ):
-    """读取 db/data/jobs_raw.json 并入库。需要管理员权限。
+    """一键同步四个库(后台执行, 立即返回):
 
-    特点:
-        - 按 (source, source_id) 去重, 重复点按钮不会重复入库
-        - 公司 upsert: 已存在的公司会自动补全空字段(industry/website 等)
+    1. MySQL     导入 jobs_raw.json(幂等)
+    2. ES        职位全量同步(搜索立即可用)
+    3. ChromaDB  职位向量构建(推荐用)
+    4. Neo4j     知识图谱重建
 
-    ⚠️ 注意: 数据导入要时间, 直接同步执行会让请求阻塞。
-       用 BackgroundTasks 在后台跑, 接口立即返回"导入中"。
-
+    每步独立容错: 某个库没启动(如 Neo4j)只标记该步失败, 不影响其他库。
+    用 GET /crawl/sync-status 轮询进度。
     """
+    if get_sync_status()["running"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="同步任务正在进行中, 请等完成后再触发",
+        )
     if not _DATA_PATH.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="数据文件不存在, 请先让爬虫把数据放到 db/data/jobs_raw.json",
+            detail=f"数据文件不存在: {_DATA_PATH.name}, 请先让爬虫产出数据",
         )
 
-    # 后台执行真正的导入(不阻塞接口返回)
-    # 用闭包封装, 避免 BackgroundTasks 直接持有 db(请求结束 db 会关)
-    async def _do_import():
-        # 注意: 后台任务必须用新的 session, 不能复用请求的 db
-        from app.core.database import AsyncSessionLocal
-        with open(_DATA_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-        async with AsyncSessionLocal() as task_db:
-            await json_to_mysql(data, task_db)
-
-    background_tasks.add_task(_do_import)
-
+    # 跑在主事件循环(BackgroundTasks), 无跨循环问题
+    background_tasks.add_task(run_sync_all)
     return Result.success(
-        data={"status": "importing", "file": _DATA_PATH.name},
-        message="导入任务已启动, 后台执行中(约1分钟)",
+        data=get_sync_status(),
+        message="全库同步已启动(约2-5分钟), 完成后所有库数据就绪",
     )
+
+
+@router.get("/sync-status", response_model=Result[dict], summary="一键同步进度(轮询)")
+async def sync_all_status(_=Depends(require_admin)):
+    """查四步同步的当前状态(前端每 5 秒轮询)。"""
+    return Result.success(data=get_sync_status())

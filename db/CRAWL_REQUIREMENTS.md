@@ -7,15 +7,19 @@
 
 ## 一、要爬哪些平台
 
-主目标是**招聘网站**,数据库 `source` 字段的取值暗示了优先级:
+**实际在爬的平台**(按当前数据量排序):
 
 | 平台 | source 值 | 说明 |
 |---|---|---|
-| BOSS 直聘 | `boss` | 默认值,主目标 |
-| 猎聘 | `liepin` | 备选 |
-| 公司官网 | `official` | 兜底 |
+| 大学生就业网(24365) | `NCSS` | **主力来源**,爬虫主目标 |
+| 猎聘 | `liepin` | 第二来源 |
+| 前程无忧 | `51job` | 补充来源 |
+| 文化创意类 | `cultural` | 垂直补充 |
+| BOSS 直聘 | `boss` | 反爬强,当前量少 |
+| 公司官网 | `official` | 预留,暂未使用 |
 
-> 如果打不了反爬,可以考虑用招聘 API / 公开数据集替代,但要保证 source 字段填对。
+> 爬虫项目位于 `pa/`(scrapy+playwright),入口 `run_pipeline.bat` 一条龙:
+> 爬取 → 格式修复 → 转标准格式 → 拷贝到 `backend/db/data/jobs_raw.json`。
 
 ---
 
@@ -57,6 +61,16 @@
 > **从 JD 里把"技能关键词"提取成字符串数组返回即可**,例如 `["Python", "MySQL", "FastAPI", "Docker"]`
 
 后端拿到后会自己做归一化(映射到 `skills` 字典表)+ 写 `job_skills` 表。
+
+#### ✅ 学历/经验同理:给原始值即可,后端自动归一
+
+招聘网站的学历/经验写法五花八门(`统招本科`/`本科及以上`/`3年以上`/`经验不限`...)。
+**爬虫按原样给,不要自己转** —— 后端入库时通过 `@validates` 自动归一:
+
+| 字段 | 归一结果(5 档) | 示例转换 |
+|---|---|---|
+| `education_req` | 博士/硕士/本科/大专/不限 | `统招本科`→本科, `学历不限`→不限 |
+| `experience_req` | 应届/1-3年/3-5年/5-10年/10年+/不限 | `3年以上`→3-5年, `经验不限`→不限 |
 
 ---
 
@@ -155,28 +169,29 @@
 
 ---
 
-## 六、任务进度可视化(可选)
-
-如果爬虫队友想用项目里的 `crawl_tasks` 表记录任务进度,可以让后端给个简单 API:
+## 六、数据从爬虫到可搜索的完整流程(实际)
 
 ```
-POST /crawl/tasks         # 爬虫开始前登记一个任务
-PATCH /crawl/tasks/{id}   # 更新 succeeded / failed 计数
+① 爬虫一条龙(pa/ 项目)
+   双击 pa/run_pipeline.bat
+   → 爬取(约40分钟) → 格式修复 → 转标准格式
+   → 产出 backend/db/data/jobs_raw.json
+
+② 一键全库同步(数据管理页, 管理员)
+   前端「数据管理」页点「一键同步所有库」(POST /crawl/sync-all)
+   → MySQL 导入(幂等去重) → ES 同步 → ChromaDB 向量 → Neo4j 图谱
+   → 四步进度实时可见(每步独立容错, 某库没启动只标红该步)
+
+③ 数据可用
+   职位搜索(ES 分词+相关度) / 智能推荐(向量) / 知识图谱 全部用上新数据
 ```
 
-这块后端目前**还没实现**,如果需要可以让后端补。
+> 后端相关接口(`app/api/crawl.py`):
+> - `GET  /crawl/preview` 预览数据文件(条数/大小/字段填充率)
+> - `POST /crawl/sync-all` 一键四库同步(后台执行, 立即返回)
+> - `GET  /crawl/sync-status` 同步进度轮询
 
-`crawl_tasks` 表字段(已建好):
-
-| 字段 | 说明 |
-|---|---|
-| `task_code` | 任务编码(唯一) |
-| `source_id` | 关联 crawl_sources 表 |
-| `keyword` | 搜索关键词,如 "Python" |
-| `city` | 目标城市 |
-| `status` | pending / running / success / failed |
-| `total` / `succeeded` / `failed` | 抓取统计 |
-| `start_at` / `end_at` | 起止时间 |
+> 注: `crawl_tasks` 表为早期预留, 当前未使用(进度由内存状态提供, 重启即清)。
 | `error_msg` | 失败原因 |
 
 ---
