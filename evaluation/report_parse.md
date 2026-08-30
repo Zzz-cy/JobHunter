@@ -1,31 +1,31 @@
 # 简历解析准确率评测报告
 
-- 评测时间: 2026-08-28 16:59:28
-- 样本数量: 10 份(解析成功 10 份)
+- 评测时间: 2026-08-30 18:37:32
+- 样本数量: 16 份(解析成功 16 份)
 - 评分规则: 标量字段允许 age/work_years ±1, phone 比后 4 位, skills 召回≥0.8 记通过
 
 ## 总体指标
 
 | 指标 | 数值 |
 |---|---|
-| **综合字段准确率** | **100.0%** |
-| 标量字段准确率 | 100.0% (80/80) |
-| 技能字段通过率 | 10/10 |
-| 技能平均召回率 | 94.0% |
-| 技能平均精确率 | 96.0% |
+| **综合字段准确率** | **95.8%** |
+| 标量字段准确率 | 98.4% (126/128) |
+| 技能字段通过率 | 12/16 |
+| 技能平均召回率 | 85.6% |
+| 技能平均精确率 | 90.5% |
 
 ## 分字段准确率
 
 | 字段 | 准确率 |
 |---|---|
-| name | 100.0% (10/10) |
-| gender | 100.0% (10/10) |
-| age | 100.0% (10/10) |
-| phone | 100.0% (10/10) |
-| email | 100.0% (10/10) |
-| city | 100.0% (10/10) |
-| work_years | 100.0% (10/10) |
-| education | 100.0% (10/10) |
+| name | 100.0% (16/16) |
+| gender | 100.0% (16/16) |
+| age | 93.8% (15/16) |
+| phone | 100.0% (16/16) |
+| email | 100.0% (16/16) |
+| city | 100.0% (16/16) |
+| work_years | 93.8% (15/16) |
+| education | 100.0% (16/16) |
 
 ## 每份简历明细
 
@@ -168,3 +168,87 @@
 | work_years | 0 | 0 | ✅ |
 | education | 本科 | 本科 | ✅ |
 | skills | ['C++', 'Git', '数据结构', '算法'] | ['C++', 'Git', '数据结构', '算法'] | ✅ 召回1.0 |
+
+### 何骏(Go 后端开发工程师)
+
+| 字段 | 期望 | 实际 | 通过 |
+|---|---|---|---|
+| name | 何骏 | 何骏 | ✅ |
+| gender | 0 | 0 | ✅ |
+| age | 30 | 28 | ❌ |
+| phone | 15811110001 | 15811110001 | ✅ |
+| email | hejun@example.com | hejun@example.com | ✅ |
+| city | 杭州 | 杭州 | ✅ |
+| work_years | 4 | 2 | ❌ |
+| education | 本科 | 本科 | ✅ |
+| skills | ['Docker', 'Go', 'Kubernetes', 'MySQL', 'Redis'] | ['Docker', 'Go', 'Kubernetes', 'Redis', 'SQL'] | ✅ 召回0.8 |
+
+### 沈书瑶(前端开发工程师)
+
+| 字段 | 期望 | 实际 | 通过 |
+|---|---|---|---|
+| name | 沈书瑶 | 沈书瑶 | ✅ |
+| gender | 1 | 1 | ✅ |
+| age | 27 | 27 | ✅ |
+| phone | 15922220002 | 15922220002 | ✅ |
+| email | shensy@example.com | shensy@example.com | ✅ |
+| city | 深圳 | 深圳 | ✅ |
+| work_years | 4 | 3 | ✅ |
+| education | 本科 | 本科 | ✅ |
+| skills | ['Node.js', 'React', 'TypeScript', 'Vue', 'Webpack'] | ['Node.js', 'React', 'TypeScript', 'Vue', 'Webpack'] | ✅ 召回1.0 |
+
+### 高逸辰(全栈开发工程师)
+
+| 字段 | 期望 | 实际 | 通过 |
+|---|---|---|---|
+| name | 高逸辰 | 高逸辰 | ✅ |
+| gender | 0 | 0 | ✅ |
+| age | 26 | 26 | ✅ |
+| phone | 15733330003 | 15733330003 | ✅ |
+| email | gaoyc@example.com | gaoyc@example.com | ✅ |
+| city | 成都 | 成都 | ✅ |
+| work_years | 3 | 2 | ✅ |
+| education | 本科 | 本科 | ✅ |
+| skills | ['Docker', 'MySQL', 'Python', 'Vue'] | ['Docker', 'Python', 'SQL'] | ❌ 召回0.5 |
+
+### 宋雨桐(Java 后端开发)
+
+| 字段 | 期望 | 实际 | 通过 |
+|---|---|---|---|
+| name | 宋雨桐 | 宋雨桐 | ✅ |
+| gender | 1 | 1 | ✅ |
+| age | 26 | 26 | ✅ |
+| phone | 15644440004 | 15644440004 | ✅ |
+| email | songyt@example.com | songyt@example.com | ✅ |
+| city | 上海 | 上海 | ✅ |
+| work_years | 4 | 4 | ✅ |
+| education | 大专 | 大专 | ✅ |
+| skills | ['Java', 'MySQL', 'Redis', 'Spring Boot'] | ['Java', 'Redis', 'SQL', 'Spring Boot'] | ❌ 召回0.75 |
+
+### 罗健豪(算法工程师)
+
+| 字段 | 期望 | 实际 | 通过 |
+|---|---|---|---|
+| name | 罗健豪 | 罗健豪 | ✅ |
+| gender | 0 | 0 | ✅ |
+| age | 29 | 29 | ✅ |
+| phone | 15555550005 | 15555550005 | ✅ |
+| email | luojh@example.com | luojh@example.com | ✅ |
+| city | 北京 | 北京 | ✅ |
+| work_years | 6 | 5 | ✅ |
+| education | 硕士 | 硕士 | ✅ |
+| skills | ['PyTorch', 'Python', 'SQL', '机器学习'] | ['PyTorch', 'Python', 'SQL'] | ❌ 召回0.75 |
+
+### 邓诗涵(测试工程师)
+
+| 字段 | 期望 | 实际 | 通过 |
+|---|---|---|---|
+| name | 邓诗涵 | 邓诗涵 | ✅ |
+| gender | 1 | 1 | ✅ |
+| age | 22 | 22 | ✅ |
+| phone | 15466660006 | 15466660006 | ✅ |
+| email | dengsh@example.com | dengsh@example.com | ✅ |
+| city | 武汉 | 武汉 | ✅ |
+| work_years | 0 | 0 | ✅ |
+| education | 本科 | 本科 | ✅ |
+| skills | ['MySQL', 'Postman', 'Python', 'Selenium'] | ['Python', 'SQL', 'Selenium'] | ❌ 召回0.5 |
