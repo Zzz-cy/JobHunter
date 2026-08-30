@@ -4,9 +4,6 @@
 
 流程: 上传测试简历 → 等待 LLM 解析 → 从数据库读解析结果 → 与标准答案逐字段比对 → 生成报告
 
-用法(在 backend 目录下):
-    .venv\\Scripts\\python.exe evaluation\\eval_parse.py --account admin@jobhunter.local --password 123456
-
 前置条件:
     1. 主后端(8000)已启动
     2. LLM 服务(8001)已启动 —— 解析靠它

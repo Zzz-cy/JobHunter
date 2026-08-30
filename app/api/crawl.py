@@ -4,8 +4,6 @@
     GET  /crawl/preview      预览数据文件状态(条数/字段填充率), 给前端展示用
     POST /crawl/sync-all     一键同步四个库(MySQL→ES→ChromaDB→Neo4j, 后台执行)
     GET  /crawl/sync-status  查一键同步进度(前端轮询)
-
-(MySQL 导入已并入 sync-all 第一步, 原单独的 /import 接口已移除)
 """
 import json
 from datetime import datetime

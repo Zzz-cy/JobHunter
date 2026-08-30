@@ -203,5 +203,127 @@
     ],
     "exp_count": 1,
     "latest_company": "小米科技有限责任公司"
+  },
+  {
+    "file": "hard_01_hejun.pdf",
+    "name": "何骏",
+    "gender": 0,
+    "age": 30,
+    "phone": "15811110001",
+    "email": "hejun@example.com",
+    "city": "杭州",
+    "work_years": 4,
+    "education": "本科",
+    "intent": "Go 后端开发工程师",
+    "skills": [
+      "Go",
+      "MySQL",
+      "Redis",
+      "Docker",
+      "Kubernetes"
+    ],
+    "exp_count": 2,
+    "latest_company": "某电商平台"
+  },
+  {
+    "file": "hard_02_shenshuyao.pdf",
+    "name": "沈书瑶",
+    "gender": 1,
+    "age": 27,
+    "phone": "15922220002",
+    "email": "shensy@example.com",
+    "city": "深圳",
+    "work_years": 4,
+    "education": "本科",
+    "intent": "前端开发工程师",
+    "skills": [
+      "React",
+      "TypeScript",
+      "Node.js",
+      "Webpack",
+      "Vue"
+    ],
+    "exp_count": 2,
+    "latest_company": "某互联网公司"
+  },
+  {
+    "file": "hard_03_gaoyichen.pdf",
+    "name": "高逸辰",
+    "gender": 0,
+    "age": 26,
+    "phone": "15733330003",
+    "email": "gaoyc@example.com",
+    "city": "成都",
+    "work_years": 3,
+    "education": "本科",
+    "intent": "全栈开发工程师",
+    "skills": [
+      "Python",
+      "Vue",
+      "MySQL",
+      "Docker"
+    ],
+    "exp_count": 1,
+    "latest_company": "某创业公司"
+  },
+  {
+    "file": "hard_04_songyutong.pdf",
+    "name": "宋雨桐",
+    "gender": 1,
+    "age": 26,
+    "phone": "15644440004",
+    "email": "songyt@example.com",
+    "city": "上海",
+    "work_years": 4,
+    "education": "大专",
+    "intent": "Java 后端开发",
+    "skills": [
+      "Java",
+      "Spring Boot",
+      "MySQL",
+      "Redis"
+    ],
+    "exp_count": 2,
+    "latest_company": "某外包公司"
+  },
+  {
+    "file": "hard_05_luojianhao.pdf",
+    "name": "罗健豪",
+    "gender": 0,
+    "age": 29,
+    "phone": "15555550005",
+    "email": "luojh@example.com",
+    "city": "北京",
+    "work_years": 6,
+    "education": "硕士",
+    "intent": "算法工程师",
+    "skills": [
+      "Python",
+      "PyTorch",
+      "机器学习",
+      "SQL"
+    ],
+    "exp_count": 2,
+    "latest_company": "某AI公司"
+  },
+  {
+    "file": "hard_06_dengshihan.pdf",
+    "name": "邓诗涵",
+    "gender": 1,
+    "age": 22,
+    "phone": "15466660006",
+    "email": "dengsh@example.com",
+    "city": "武汉",
+    "work_years": 0,
+    "education": "本科",
+    "intent": "测试工程师",
+    "skills": [
+      "Python",
+      "Selenium",
+      "MySQL",
+      "Postman"
+    ],
+    "exp_count": 1,
+    "latest_company": "某科技公司(实习)"
   }
 ]

@@ -5,7 +5,6 @@
 流程: 用解析成功的简历调 /recommend → 取 Top10 推荐岗位 → 和简历核心技能比对 → 生成报告
 
 用法(在 backend 目录下, 需先跑过 eval_parse.py 生成 parse_results.json):
-    .venv\\Scripts\\python.exe evaluation\\eval_matching.py --account admin@jobhunter.local --password 123456
 
 前置条件:
     1. 主后端(8000)已启动
