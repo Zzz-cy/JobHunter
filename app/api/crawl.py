@@ -48,6 +48,66 @@ async def preview_crawl_data(_=Depends(require_admin)):
     }, message="数据文件就绪")
 
 
+# ---------- 首次部署初始化(Bootstrap) ----------
+
+@router.post("/bootstrap", response_model=Result[dict], summary="首次部署初始化(免登录)")
+async def bootstrap_system():
+    """
+    空库专用: 建表 + 字典种子 + 默认账号。
+
+    初始化成功后再调无任何效果, 免鉴权也不会被滥用。
+    """
+    import asyncio
+    import os
+
+    import pymysql
+
+    def _has_admin() -> bool:
+        """users 表存在且有 admin 账号 = 已初始化(表/库不存在视为未初始化)。"""
+        try:
+            conn = pymysql.connect(
+                host=settings.MYSQL_HOST, port=settings.MYSQL_PORT,
+                user=settings.MYSQL_USER, password=settings.MYSQL_PASSWORD,
+                database=settings.MYSQL_DATABASE, charset="utf8mb4",
+            )
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM users WHERE role='admin'")
+                return cur.fetchone()[0] > 0
+        except Exception:
+            return False
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    if await asyncio.to_thread(_has_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="系统已初始化, 请直接登录",
+        )
+
+    # 注入 env(init_storage 用 os.getenv 读配置, .env 的值不在 os.environ)
+    for key, val in (
+        ("MYSQL_HOST", settings.MYSQL_HOST),
+        ("MYSQL_PORT", str(settings.MYSQL_PORT)),
+        ("MYSQL_USER", settings.MYSQL_USER),
+        ("MYSQL_PASSWORD", settings.MYSQL_PASSWORD),
+    ):
+        os.environ.setdefault(key, val)
+
+    from scripts.init_storage import init_mysql
+
+    # 只跑 01+02: 表 + 字典 + 账号 + 求职者A演示简历(在 02 里)。
+    # 不跑 03: 纯演示数据(mock 职位/投递), 会污染真实爬虫数据。
+    await asyncio.to_thread(init_mysql, ["01_schema.sql", "02_seed.sql"])
+
+    return Result.success(
+        data={"initialized": True},
+        message="初始化完成! 请用默认管理员账号登录",
+    )
+
+
 # ---------- 一键全库同步 ----------
 
 @router.post("/sync-all", response_model=Result[dict], summary="一键同步所有库")

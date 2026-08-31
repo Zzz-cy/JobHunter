@@ -42,7 +42,6 @@
 
         <div class="auth-options">
           <el-checkbox v-model="form.remember">记住我</el-checkbox>
-          <el-link type="primary" :underline="false">忘记密码?</el-link>
         </div>
 
         <el-button
@@ -60,6 +59,18 @@
             立即注册
           </el-link>
         </div>
+
+        <!-- 首次部署入口: 空库时建表+种子(自毁式, 已初始化则后端拒绝) -->
+        <div class="auth-footer" style="margin-top: 4px">
+          <el-link
+            type="info"
+            :underline="false"
+            :disabled="bootstrapping"
+            @click="handleBootstrap"
+          >
+            {{ bootstrapping ? '初始化中...' : '首次部署? 初始化系统' }}
+          </el-link>
+        </div>
       </el-form>
     </div>
   </div>
@@ -70,6 +81,21 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import request from '@/utils/request'
+
+// 首次部署: 空库时一键建表+种子(后端自毁式, 已初始化会 403)
+const bootstrapping = ref(false)
+const handleBootstrap = async () => {
+  bootstrapping.value = true
+  try {
+    const res = await request.post('/crawl/bootstrap')
+    ElMessage.success(res.message || '初始化完成, 请用默认管理员登录')
+  } catch (e) {
+    // 403=已初始化, 拦截器会提示
+  } finally {
+    bootstrapping.value = false
+  }
+}
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()

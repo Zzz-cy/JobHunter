@@ -29,7 +29,14 @@ def split_sql(sql_text: str) -> list[str]:
     return [s.strip() for s in text.split(";") if s.strip()]
 
 
-def init_mysql() -> None:
+def init_mysql(scripts: list[str] | None = None) -> None:
+    """执行初始化 SQL。
+
+    scripts: 默认全部(建表+种子+mock)。
+    传参可只跑幂等子集, 如一键同步只跑 ["01_schema.sql", "02_seed.sql"]
+    (03_mock 不幂等, 重复跑数据翻倍, 不进自动流程)。
+    """
+    scripts = scripts or MYSQL_SCRIPTS
     print("==> [MySQL] 开始初始化...")
     conn = pymysql.connect(**MYSQL_CONF, charset="utf8mb4", autocommit=True)
     try:
@@ -37,7 +44,7 @@ def init_mysql() -> None:
             cur.execute("CREATE DATABASE IF NOT EXISTS jobhunter "
                         "DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci")
             cur.execute("USE jobhunter")
-            for script in MYSQL_SCRIPTS:
+            for script in scripts:
                 sql = (DB_DIR / "mysql" / script).read_text(encoding="utf-8")
                 for stmt in split_sql(sql):
                     # 跳过脚本里重复的 USE(上面已选库)

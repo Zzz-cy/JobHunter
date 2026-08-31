@@ -34,6 +34,21 @@ CREATE TABLE IF NOT EXISTS `skills` (
     KEY `idx_skill_hot` (`is_hot`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='技能标准化字典';
 
+-- 新兴技能候选(LLM 抽出但字典未收录的词, 归一未命中时记录, 供新兴发现)
+CREATE TABLE IF NOT EXISTS `emerging_skills` (
+    `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name`        VARCHAR(128) NOT NULL COMMENT 'LLM 抽出的未匹配技能词',
+    `hit_count`   INT NOT NULL DEFAULT 1 COMMENT '累计出现次数(证据强度)',
+    `first_seen`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '首次出现',
+    `last_seen`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近出现',
+    `status`      VARCHAR(16) NOT NULL DEFAULT 'candidate' COMMENT 'candidate候选/adopted已转正',
+    `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_emerging_name` (`name`),
+    KEY `idx_emerging_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='新兴技能候选表';
+
 -- 行业 / 城市字典
 CREATE TABLE IF NOT EXISTS `industries` (
     `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,

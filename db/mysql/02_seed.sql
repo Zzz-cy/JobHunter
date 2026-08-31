@@ -131,8 +131,65 @@ INSERT INTO `skills` (`skill_code`,`name`,`alias`,`category`,`is_hot`) VALUES
 ('SK_OFFICE','Office','office-suite','工具',0)
 ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
 
--- ---- 测试账号(密码: 123456 的 bcrypt 哈希) ----
+-- ---- 测试账号(三个, 密码都是 123456) ----
+-- id=1 管理员 / id=2 求职者A(03_mock 会给它简历, 用于演示推荐) / id=3 新用户(空白, 演示首次使用流程)
 INSERT INTO `users` (`user_code`,`phone`,`email`,`password_hash`,`nickname`,`role`) VALUES
-('U_ADMIN_001','13800000000','admin@jobhunter.local','$2a$10$N9qo8uLOickgx2ZMRZoMy.MrqMJBrBnTgvIWIgUVS4tYqQ6tBqK.','管理员','admin'),
-('U_USER_001','13900000001','user1@jobhunter.local','$2a$10$N9qo8uLOickgx2ZMRZoMy.MrqMJBrBnTgvIWIgUVS4tYqQ6tBqK.','求职者A','user')
-ON DUPLICATE KEY UPDATE `nickname`=VALUES(`nickname`);
+('U_ADMIN_001','13800000000','admin@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','管理员','admin'),
+('U_USER_001','13900000001','user1@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','求职者A','user'),
+('U_USER_002','13900000002','user2@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','新用户','user')
+ON DUPLICATE KEY UPDATE `nickname`=VALUES(`nickname`), `password_hash`=VALUES(`password_hash`);
+
+
+-- ============================================================
+-- 求职者A(id=2) 演示简历: 让推荐功能开箱可演示。
+-- 不含任何 mock 职位(职位只来自爬虫真实数据)。
+-- 幂等策略: 按 resume_code 先删后插; 技能按"字典名"映射, 不依赖自增 id。
+-- ============================================================
+
+DELETE FROM `resume_skills`
+WHERE resume_id IN (SELECT id FROM `resumes` WHERE `resume_code` IN ('R_20260101','R_20260102'));
+DELETE FROM `resume_experiences`
+WHERE resume_id IN (SELECT id FROM `resumes` WHERE `resume_code` IN ('R_20260101','R_20260102'));
+DELETE FROM `resume_educations`
+WHERE resume_id IN (SELECT id FROM `resumes` WHERE `resume_code` IN ('R_20260101','R_20260102'));
+DELETE FROM `resumes` WHERE `resume_code` IN ('R_20260101','R_20260102');
+
+INSERT INTO `resumes` (`resume_code`, `user_id`, `name`, `gender`, `age`, `city`, `phone`, `email`, `source_type`, `file_url`, `parse_status`, `work_years`, `education`, `expect_salary_min`, `expect_salary_max`, `expect_city`, `expect_job`, `overall_score`) VALUES
+('R_20260101', 2, '张三', 0, 28, '北京', '13900000001', 'zhangsan@example.com',
+ 'pdf', NULL, 'done', 5, '本科', 25, 40, '北京', 'Python 后端工程师', 88.50),
+('R_20260102', 2, '张三', 0, 28, '北京', '13900000001', 'zhangsan@example.com',
+ 'pdf', NULL, 'done', 5, '本科', 30, 50, '北京', '机器学习工程师', 82.00);
+
+INSERT INTO `resume_skills` (`resume_id`, `skill_id`, `proficiency`, `years`)
+SELECT r.id, s.id, t.prof, t.yrs
+FROM `resumes` r
+JOIN (
+    SELECT 'R_20260101' AS code, 'Python' AS skill_name, 5 AS prof, 5.0 AS yrs UNION ALL
+    SELECT 'R_20260101', 'FastAPI', 4, 2.0 UNION ALL
+    SELECT 'R_20260101', 'Django', 4, 3.0 UNION ALL
+    SELECT 'R_20260101', 'MySQL', 4, 5.0 UNION ALL
+    SELECT 'R_20260101', 'Redis', 4, 4.0 UNION ALL
+    SELECT 'R_20260101', 'Docker', 3, 2.0 UNION ALL
+    SELECT 'R_20260101', 'Git', 4, 5.0 UNION ALL
+    SELECT 'R_20260101', 'Linux', 4, 5.0 UNION ALL
+    SELECT 'R_20260102', 'Python', 5, 5.0 UNION ALL
+    SELECT 'R_20260102', '机器学习', 4, 3.0 UNION ALL
+    SELECT 'R_20260102', '深度学习', 3, 2.0 UNION ALL
+    SELECT 'R_20260102', 'NLP', 4, 2.5 UNION ALL
+    SELECT 'R_20260102', 'LLM', 3, 1.0 UNION ALL
+    SELECT 'R_20260102', 'SQL', 4, 4.0
+) t ON t.code = r.resume_code
+JOIN `skills` s ON s.name = t.skill_name;
+
+INSERT INTO `resume_experiences` (`resume_id`, `company_name`, `title`, `start_date`, `end_date`, `description`, `is_current`)
+SELECT r.id, x.company_name, x.title, x.start_date, x.end_date, x.description, x.is_current
+FROM `resumes` r
+JOIN (
+    SELECT 'R_20260101' AS code, '字节跳动' AS company_name, 'Python 后端工程师' AS title, '2021-07-01' AS start_date, NULL AS end_date, '负责核心业务系统的设计与开发,参与高并发架构优化。' AS description, 1 AS is_current UNION ALL
+    SELECT 'R_20260101', '某创业公司', '初级 Python 开发', '2018-07-01', '2021-06-30', 'Web 后端开发,使用 Django 框架,负责电商平台 API 开发。', 0 UNION ALL
+    SELECT 'R_20260102', '字节跳动', 'Python 后端工程师', '2021-07-01', NULL, '兼顾业务开发和算法落地,参与推荐系统特征工程项目。', 1
+) x ON x.code = r.resume_code;
+
+INSERT INTO `resume_educations` (`resume_id`, `school`, `major`, `degree`, `start_date`, `end_date`)
+SELECT r.id, '北京理工大学', '计算机科学与技术', '本科', '2014-09-01', '2018-06-30'
+FROM `resumes` r WHERE r.resume_code IN ('R_20260101','R_20260102');

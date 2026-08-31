@@ -25,7 +25,8 @@ _sync_state: dict = {
 
 
 def get_sync_status() -> dict:
-    return dict(_sync_state)
+    # 排除 _ 开头的内部标记(如 _fresh_import), 不给前端
+    return {k: v for k, v in _sync_state.items() if not k.startswith("_")}
 
 
 def _init_steps() -> None:
@@ -49,31 +50,94 @@ def _step(key: str, status: str, message: str = "") -> None:
 # ---------- 四个同步步骤 ----------
 
 async def _step_mysql() -> str:
-    """第1步: jobs_raw.json → MySQL(幂等)。"""
+    """第1步: 确保表结构/字典存在(幂等) + 导入 jobs_raw.json(幂等)。"""
+    import asyncio
+    import os
+
     from app.core.database import AsyncSessionLocal
+    from app.core.config import settings
     from app.utils.jsonToMysqlUtil import json_to_mysql
+
+    # init_storage 用 os.getenv 读配置, .env 的值不在 os.environ 里, 先注入
+    for env_key, setting in (
+        ("MYSQL_HOST", settings.MYSQL_HOST),
+        ("MYSQL_PORT", str(settings.MYSQL_PORT)),
+        ("MYSQL_USER", settings.MYSQL_USER),
+        ("MYSQL_PASSWORD", settings.MYSQL_PASSWORD),
+    ):
+        os.environ.setdefault(env_key, setting)
+
+    # 建表+字典种子(全新库补齐, 已有库 IF NOT EXISTS/IGNORE 无感跳过)
+    # 不含 03_mock: mock 不幂等, 重复跑数据翻倍
+    from scripts.init_storage import init_mysql
+    await asyncio.to_thread(
+        init_mysql, ["01_schema.sql", "02_seed.sql"])
 
     with open(_JOBS_RAW_PATH, encoding="utf-8") as f:
         data = json.load(f)
+
+    from sqlalchemy import text
     async with AsyncSessionLocal() as db:
+        # 导入前职位数: 0 = 全新库(重置/首次), 供向量库判断全量重建
+        before = await db.scalar(text("SELECT COUNT(*) FROM jobs WHERE is_deleted=0"))
+        _sync_state["_fresh_import"] = (before == 0)
+
         await json_to_mysql(data, db)
     return f"导入 {len(data.get('jobs', []))} 条(已存在的自动跳过)"
 
 
 async def _step_es() -> str:
-    """第2步: MySQL 全量职位 → ES。"""
+    """第2步: MySQL 全量职位 → ES(以 MySQL 为准, 删索引重建)。"""
+    from app.core.es import es_client, JOBS_INDEX
+    from scripts.init_es_index import MAPPING
     from scripts.sync_jobs_to_es import sync
 
-    await sync()   # 函数内部会打印成功条数
-    return "ES 全量同步完成(_id=主键, 幂等)"
+    # 删了重建: 增量写入会让 MySQL 已删/重置的职位残留在 ES(total 虚高/分页错乱)
+    if es_client.indices.exists(index=JOBS_INDEX):
+        es_client.indices.delete(index=JOBS_INDEX)
+    es_client.indices.create(index=JOBS_INDEX, **MAPPING)
+    await sync()
+    return "ES 重建完成(与 MySQL 完全一致)"
 
 
 async def _step_chroma() -> str:
-    """第3步: MySQL 职位 → ChromaDB 向量(推荐用)。"""
-    from scripts.build_job_vectors import run_build
+    """第3步: MySQL 职位 → ChromaDB 向量。
 
-    count = await run_build()   # 增量构建, 已有向量不重建
-    return f"向量库构建完成, 本次处理 {count} 条"
+    两个关键设计:
+    1. 子进程执行: embedding 是同步阻塞计算, 跑在事件循环里会卡死
+       整个后端(连进度轮询都没响应, 前端弹超时)。丢给子进程完全隔离。
+    2. 智能全量/增量:
+       - 全新库(重置/首次, _fresh_import) 或 向量数>MySQL数(残留异常) → 全量重建
+         (重置库后主键复用, 旧向量内容与新职位对不上, 增量无法自愈)
+       - 追加场景 → 增量(只建新职位, 存量向量不重算)
+    """
+    import sys
+
+    from sqlalchemy import text
+
+    from app.core.database import AsyncSessionLocal
+    from app.services import vector_service
+
+    col = vector_service._get_collection()
+    chroma_count = col.count()
+    async with AsyncSessionLocal() as db:
+        mysql_count = await db.scalar(text("SELECT COUNT(*) FROM jobs WHERE is_deleted=0"))
+
+    rebuild = _sync_state.get("_fresh_import", False) or chroma_count > mysql_count
+    mode = "全量重建" if rebuild else "增量构建"
+
+    args = [sys.executable, "-m", "scripts.build_job_vectors"] + (["--rebuild"] if rebuild else [])
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+    )
+    out, _ = await proc.communicate()   # 等子进程, 不阻塞事件循环
+    if proc.returncode != 0:
+        tail = (out or b"").decode(errors="replace")[-200:]
+        raise RuntimeError(f"向量构建失败: {tail}")
+
+    n = vector_service._get_collection().count()
+    return f"向量库{mode}完成: {chroma_count} → {n} 条"
 
 
 def _step_neo4j_sync() -> str:

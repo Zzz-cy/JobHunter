@@ -100,3 +100,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# 爬虫产出的数据文件(17MB级, 不进版本库)
+db/data/*.json

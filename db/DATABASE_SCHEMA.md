@@ -10,6 +10,7 @@
 
 - [一、字典层](#一字典层)
   - [1.1 `skills` 技能字典](#11-skills-技能字典)
+  - [1.2 `emerging_skills` 新兴技能候选](#12-emerging_skills-新兴技能候选)
   - [1.2 `industries` 行业字典](#12-industries-行业字典)
 - [二、主体层](#二主体层)
   - [2.1 `users` 系统用户](#21-users-系统用户)
@@ -56,6 +57,25 @@
 - `uk_skill_name`：标准化名唯一，防止字典重复
 - `idx_skill_category`：分类聚合查询（如"统计所有语言类技能"）
 - `idx_skill_hot`：热门技能榜热路径
+
+### 1.2 `emerging_skills` 新兴技能候选
+
+**用途**：技能归一未命中字典时**不再丢弃**，记入本表积累证据——新兴技能发现（字典外新词）的数据来源，主要来自简历的 LLM 开放抽取（职位侧技能经爬虫词表归一，几乎不产生新词）。
+
+| 字段 | 类型 | 可空 | 默认值 | 键 | 说明 |
+|---|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | **PRI** | 自增主键 |
+| `name` | VARCHAR(128) | NO | — | **UNI** | 未匹配技能词（upsert：重复出现 hit_count+1） |
+| `hit_count` | INT | NO | 1 | — | 累计出现次数（证据强度，`/stats/emerging` 按此过滤排序） |
+| `first_seen` | DATETIME | NO | CURRENT_TIMESTAMP | — | 首次出现 |
+| `last_seen` | DATETIME | NO | CURRENT_TIMESTAMP | — | 最近出现（判断持续热度还是昙花一现） |
+| `status` | VARCHAR(16) | NO | 'candidate' | MUL | `candidate` 候选 / `adopted` 已转正进 skills 字典 |
+
+**索引说明**：
+- `uk_emerging_name`：词唯一，支撑 ON DUPLICATE KEY UPDATE 计数累加
+- `idx_emerging_status`：按状态筛候选
+
+**与 `skills` 的关系**：候选词证据充足后人工转正（INSERT 进 skills 并置 adopted）→ 字典动态生长，下轮导入即正常关联。
 
 **示例数据**：
 ```
