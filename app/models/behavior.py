@@ -1,14 +1,6 @@
-"""
-用户行为 & 业务模型
+"""用户行为模型: applications(收藏/投递) + recommendations(推荐流水) + chat_history。
 
-对应数据库表:
-    - applications       用户-职位关系(点击/收藏/外站投递反馈)
-    - recommendations    推荐结果流水
-    - chat_history       AI对话历史
-
-注意:
-    - applications 用完整 TimestampMixin + SoftDeleteMixin
-    - recommendations / chat_history 只有 created_at(只增不改), 不用 mixin, 单独定义
+applications 用 TimestampMixin + SoftDeleteMixin; 另两张只增不改, 只有 created_at。
 """
 from datetime import datetime
 from decimal import Decimal
@@ -29,13 +21,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, BigIntPk, SoftDeleteMixin, TimestampMixin
 
 
-# ============================================================
 # 用户-职位关系
-# ============================================================
 class Application(Base, TimestampMixin, SoftDeleteMixin):
     """用户-职位关系表(点击/收藏/外站投递反馈)。
 
-    本平台不代投, 仅提供 jobs.source_url 跳转;
     applied 之后状态依赖用户手动反馈。
     """
 
@@ -55,35 +44,30 @@ class Application(Base, TimestampMixin, SoftDeleteMixin):
         Integer, ForeignKey("resumes.id"),
     )
 
-    # ---------- 状态机 ----------
-    # status 只管"投递进度"这一个维度,跟收藏(is_favorited)彻底解耦:
+    # 状态机
     #   - None:        还没投递(可能只是收藏着)
     #   - submitted:   已投递
     #   - interviewed: 面试中
     #   - offer:       拿到 offer
-    #   - rejected:    被拒
-    # 收藏维度独立用 is_favorited(下面), 两者互不影响。
-    # 这样"收藏但没投递" = status=None + is_favorited=1,
-    # "投递过 + 收藏着" = status='submitted' + is_favorited=1,组合自由。
+    #   - rejected:    被拒。
     status: Mapped[str | None] = mapped_column(
         String(16), default=None, index=True,
     )
-    # 收藏维度(独立布尔): 0=未收藏, 1=已收藏。
-    # 和 status 互不影响, 这样"收藏 + 已投递"等组合状态才能正确表达。
+    # 收藏维度: 0=未收藏, 1=已收藏。
     is_favorited: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, index=True,
     )
     match_score: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
 
-    # ---------- 时间点 ----------
+    # 时间点
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime)
     feedback_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    # ---------- 扩展 ----------
+    # 扩展
     external_source: Mapped[str | None] = mapped_column(String(32))
     note: Mapped[str | None] = mapped_column(String(512))
 
-    # ---------- 关系 ----------
+    # 关系
     user: Mapped["User"] = relationship()  # noqa: F821
     # lazy="selectin": 查 Application 时自动预加载关联的 Job,
     # 避免在 async session 里访问 application.job 时触发同步懒加载报错(MissingGreenlet)
@@ -97,9 +81,7 @@ class Application(Base, TimestampMixin, SoftDeleteMixin):
         )
 
 
-# ============================================================
 # 推荐流水
-# ============================================================
 class Recommendation(Base):
     """推荐结果流水, 每次(用户, 岗位)推荐一条, 用于A/B与效果回溯。"""
 
@@ -137,9 +119,7 @@ class Recommendation(Base):
         )
 
 
-# ============================================================
 # AI 对话历史
-# ============================================================
 class ChatHistory(Base):
     """AI对话历史, 按session聚合。"""
 

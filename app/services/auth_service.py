@@ -11,9 +11,7 @@ from app.utils.codeUtil import generate_code
 
 async def register(payload: RegisterSchema, db: AsyncSession):
     """
-        - 入参 RegisterSchema 已校验: 手机号/邮箱格式、密码长度、至少传一个账号
-        - 这里只校验"账号是否已存在"(数据库唯一性)
-        - 注册成功只返回提示, 不返回用户信息(注册不等于登录)
+    接收手机号和邮箱、密码
     """
     conditions = []
     if payload.phone:
@@ -63,10 +61,6 @@ async def login(user: LoginSchema, db: AsyncSession):
 
     return LoginOut(
         # jwt,默认一天过期
-        # sub 存数字 user.id(数据库主键), 便于跨服务统一用户标识
-        # (LLM 服务也用数字 user_id, 两边类型一致才能正确识别用户)
-        # role/username 一并写入, 供 llm_module 纯验签后直接读取做权限判断
-        # (llm_module 不再查自己的 user 表, 必须从 token 里拿到 role)
         token=create_access_token(data={
             "sub": str(existing.id),
             "role": existing.role,

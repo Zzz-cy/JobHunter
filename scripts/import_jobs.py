@@ -1,18 +1,11 @@
 """一键导入爬虫数据到数据库。
 
 用法:
-    cd backend
     python -m scripts.import_jobs                  # 导入 db/data/jobs_raw.json
     python -m scripts.import_jobs --file 其他.json   # 导入指定文件
-    python -m scripts.import_jobs --reset           # 先清空再导入(谨慎!)
+    python -m scripts.import_jobs --reset           # 先清空再导入(会丢收藏/投递!)
 
-原理:
-    读 json 文件 → 调 json_to_mysql(已封装好去重/公司upsert/技能关联/事务)
-    json_to_mysql 内部按 (source, source_id) 去重,重复跑不会产生重复数据。
-    所以默认是"增量导入":有新数据就加,已有的会跳过。
-
-⚠️ --reset 会清空 jobs/job_skills/companies/applications(含收藏/投递记录),
-   因为重新导入后 job_id 会变,旧记录会指向不存在的职位。
+内部走 json_to_mysql(按 source+source_id 去重), 默认增量, 重复跑安全。
 """
 from __future__ import annotations
 

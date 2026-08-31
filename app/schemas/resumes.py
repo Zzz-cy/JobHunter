@@ -10,14 +10,9 @@ from pydantic import model_validator
 from app.schemas.base import ORMOut
 
 
-# ============================================================
-# 出参: 上传成功后返回(前端拿这个轮询状态)
-# ============================================================
+# 出参: 上传成功后返回
 class ResumeUploadOut(ORMOut):
-    """简历上传成功后的返回。
-
-    上传阶段只返回 id / 状态 / 文件地址,
-    """
+    """上传成功后返回(id + 解析状态)。"""
 
     id: int
     resume_code: str
@@ -52,9 +47,7 @@ class SkillOut(ORMOut):
 
 # 出参: 用户的简历卡片数据列表
 class OutList(ORMOut):
-    """
-    返回用户简历卡片数据
-    """
+    """简历卡片数据。"""
     id: int
     title: str | None = None      # 用户自定义标题, 未填则前端回退显示 name
     name: str

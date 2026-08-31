@@ -48,7 +48,7 @@ import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { get } from '@/utils/request'
 
-// ==================== 模拟数据(后端/Neo4j 不可用时的兜底,演示用) ====================
+// 模拟数据: Neo4j 连不上时的兜底(演示用)
 const mockNodes = [
   { id: '1', name: '人工智能', symbolSize: 60, category: 'AI核心' },
   { id: '2', name: '机器学习', symbolSize: 50, category: '学习方法' },
@@ -98,7 +98,7 @@ const mockLinks = [
 
 const mockCategories = ['AI核心', '学习方法', '应用领域', '网络架构', '大模型', '视觉任务', '框架工具']
 
-// ==================== Neo4j 节点类型 → 中文分类名 ====================
+// Neo4j 节点类型 → 中文分类名
 const TYPE_LABELS = {
   JobDirection: '岗位方向',
   City: '热门城市',
@@ -111,7 +111,7 @@ const TYPE_LABELS = {
 }
 const typeLabel = (t) => TYPE_LABELS[t] || t || '其他'
 
-// ==================== 状态 ====================
+// 状态
 const chartRef = ref(null)
 const loading = ref(false)
 const dirLoading = ref(false)
@@ -125,20 +125,20 @@ const categories = ref([])        // 分类名数组
 
 let chartInstance = null
 
-// ==================== 调色板 ====================
+// 调色板
 const PALETTE = [
   '#5470c6', '#91cc75', '#fac858', '#ee6666',
   '#73c0de', '#3ba272', '#fc8452', '#9a60b4',
   '#ea7ccc', '#546e7a',
 ]
 
-// ==================== 加载方向列表 ====================
+// 加载方向列表
 async function fetchDirections() {
   dirLoading.value = true
   try {
     const data = await get('/knowledge-graph/directions')
     directions.value = data || []
-    // 默认选第一个方向(岗位数最多的,后端已排序)
+    // 默认选第一个(后端按岗位数排过序)
     if (directions.value.length > 0 && !keyword.value) {
       keyword.value = directions.value[0].name
     }
@@ -149,12 +149,12 @@ async function fetchDirections() {
   }
 }
 
-// ==================== 加载图谱数据 ====================
+// 加载图谱数据
 async function fetchGraphData() {
   if (!keyword.value) return
   loading.value = true
   try {
-    // 后端返回 Result 壳, request 拦截器已拆壳, 这里直接拿业务数据
+    // request 已拆壳, 拿到的就是业务数据
     const data = await get('/knowledge-graph/direction', { params: { keyword: keyword.value } })
 
     const center = data.center || {}
@@ -205,7 +205,7 @@ async function fetchGraphData() {
   }
 }
 
-// ==================== 渲染 ====================
+// 渲染
 function renderChart() {
   if (!chartInstance) return
 
@@ -289,12 +289,12 @@ function renderChart() {
   )
 }
 
-// ==================== 自适应 ====================
+// 自适应
 function handleResize() {
   chartInstance?.resize()
 }
 
-// ==================== 生命周期 ====================
+// 生命周期
 onMounted(async () => {
   await nextTick()
   if (!chartRef.value) return

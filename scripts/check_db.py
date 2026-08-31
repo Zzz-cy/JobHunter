@@ -1,14 +1,6 @@
-"""
-连接测试脚本
+"""连接测试脚本: 验证 .env 加载 + ORM 查询 + relationship。
 
-验证:
-    1. .env 配置能正确加载
-    2. SQLAlchemy 模型与数据库 schema 匹配
-    3. 能成功查询 users 表
-
-运行:
-    cd backend
-    python -m scripts.check_db
+运行: python -m scripts.check_db
 """
 import asyncio
 import sys

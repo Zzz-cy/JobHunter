@@ -16,14 +16,7 @@ class Base(DeclarativeBase):
 
 
 class TimestampMixin:
-    """时间戳混入, 业务表通用。
-
-    提供两个字段:
-        - created_at: 创建时间(由 MySQL 默认值填充)
-        - updated_at: 更新时间(由 MySQL ON UPDATE 自动维护)
-
-    注意: 这两个字段是数据库层维护的, Python 代码不需要手动赋值。
-    """
+    """时间戳混入: created_at / updated_at, 都由数据库层维护, 代码不用赋值。"""
 
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,
@@ -42,7 +35,6 @@ class SoftDeleteMixin:
     """软删除混入, 业务表通用。
 
     使用 is_deleted=1 标记删除, 不物理删除, 保留数据用于审计。
-    查询时需要手动过滤 WHERE is_deleted = 0。
     """
 
     is_deleted: Mapped[int] = mapped_column(

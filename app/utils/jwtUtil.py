@@ -28,33 +28,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    """生成 JWT 令牌
-
-    Args:
-        data: 要写入令牌载荷的数据，如 {"sub": user.id}（sub = subject，即用户标识）
-        expires_delta: 自定义过期时长，不传则使用默认值 ACCESS_TOKEN_EXPIRE_MINUTES
-
-    Returns:
-        编码后的 JWT 字符串
-    """
+    """生成 JWT。data 写入载荷(如 {"sub": user.id}), 不传过期时长用默认值。"""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})  # exp = expiration，过期时间，JWT 标准字段
+    to_encode.update({"exp": expire})  # exp = 过期时间, JWT 标准字段
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
-    """解析 JWT 令牌，返回载荷字典
-
-    Args:
-        token: JWT 字符串
-
-    Returns:
-        载荷字典，包含 sub、exp 等字段
-
-    Raises:
-        JWTError: 令牌过期、签名无效或格式错误时抛出
-    """
+    """解析 JWT 返回载荷。过期/签名无效/格式错误抛 JWTError。"""
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
 
@@ -62,20 +44,9 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """FastAPI 依赖项：从请求头中提取令牌并返回当前用户对象
+    """依赖项: 解 token 拿当前用户, 无效或用户不存在抛 401。
 
-    使用方式：在路由函数参数中加 current_user: User = Depends(get_current_user)
-    如果令牌无效或用户不存在，自动返回 401 错误。
-
-    Args:
-        token: 由 oauth2_scheme 自动从请求头提取的 JWT 字符串
-        db: 注入的数据库会话
-
-    Returns:
-        当前登录的 User 模型实例
-
-    Raises:
-        HTTPException 401: 令牌无效、过期或用户不存在
+    用法: 路由参数加 current_user: User = Depends(get_current_user)
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -101,13 +72,7 @@ async def get_current_user(
 
 
 async def require_admin(user: User = Depends(get_current_user)) -> User:
-    """管理员鉴权依赖: 在 get_current_user 基础上, 再校验 role == 'admin'。
-
-    用法: 需要管理员权限的接口加 current_user: User = Depends(require_admin)
-    普通用户调用 → 403 Forbidden; 未登录 → 401(get_current_user 已处理)
-
-    叠加依赖: require_admin → get_current_user → 解析 token → 查 user → 校 role
-    """
+    """管理员鉴权: 在 get_current_user 基础上再校 role == 'admin', 非管理员 403。"""
     if user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

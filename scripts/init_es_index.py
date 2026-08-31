@@ -1,20 +1,13 @@
-"""
-初始化 ES 的 jobs 索引(mapping 定义)
+"""初始化 ES 的 jobs 索引(mapping 定义)。
 
-用途: 定义职位文档的字段结构 + 分词器, 全量同步前必须先跑一次。
-用法:
-    cd backend
-    python -m scripts.init_es_index
-
-幂等性: 索引已存在时先删除重建(开发期方便改 mapping, 生产别这么干)。
+全量同步前必须先跑一次。已存在先删重建(开发期方便, 生产要用 alias 迁移)。
 """
 from app.core.es import es_client, JOBS_INDEX
 
-# ---------- jobs 索引的 mapping(字段结构定义) ----------
-# 设计原则(对应 MySQL 查询场景):
-#   - 要"搜索"的字段(title/description/company_name) → text + ik 分词
-#   - 要"精确筛选"的字段(city/skills/学历/经验)     → keyword(不分词, 整体匹配)
-#   - 要"范围比较"的字段(薪资/发布时间)              → integer/date
+# ---------- jobs 索引 mapping ----------
+# 搜索字段(title/description/company) → text + ik 分词
+# 精确筛选(city/skills/学历/经验)    → keyword 不分词
+# 范围比较(薪资/时间)                → integer/date
 MAPPING = {
     "settings": {
         "number_of_shards": 1,        # 单机单分片够用
@@ -63,7 +56,7 @@ MAPPING = {
 
 
 def main():
-    # 已存在先删(开发期改 mapping 方便; 生产要用 alias 平滑迁移)
+    # 已存在先删(生产要用 alias 平滑迁移)
     if es_client.indices.exists(index=JOBS_INDEX):
         es_client.indices.delete(index=JOBS_INDEX)
         print(f"🗑️  已删除旧索引 {JOBS_INDEX}")

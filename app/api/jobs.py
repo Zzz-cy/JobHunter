@@ -19,19 +19,15 @@ router = APIRouter(prefix="/jobs", tags=["工作"])
 
 @router.get("/page", response_model=Result[PageResult[JobOut]], summary="工作的分页查询")
 async def get_page(job: JobSearchSchema = Depends(), db: AsyncSession = Depends(get_db)):
-    """
-    职位搜索(分页)。
+    """职位搜索(分页)。
 
-    引擎选择(.env 的 SEARCH_ENGINE):
-        - es(默认): ES 分词+相关度排序, 标题命中排最前
-        - mysql:   LIKE 模糊匹配(降级方案)
-    ES 未启动时自动降级 MySQL, 接口不受影响。
+    SEARCH_ENGINE=es 走ES分词, ES挂了自动降级 MySQL LIKE。
     """
     if settings.SEARCH_ENGINE == "es":
         try:
             jobs, total = await search_jobs_es(job, db)
         except Exception:
-            # ES 挂了/没启动/超时 → 自动降级 MySQL
+            # ES出问题，自动降级成MySQL
             jobs, total = await query(job, db)
     else:
         jobs, total = await query(job, db)
@@ -62,10 +58,7 @@ async def get_hot_keywords(db: AsyncSession = Depends(get_db)):
 
 @router.get("/hot", response_model=Result[List[JobOut]], summary="热门职位(首页用)")
 async def get_hot_jobs(db: AsyncSession = Depends(get_db)):
-    """首页"热门职位"数据。
-
-    用"最新发布 + 薪资较高"近似热门:
-    """
+    """首页"热门职位": 用"最新发布 + 薪资较高"近似。"""
     stmt = (
         select(Job)
         .where(
@@ -84,10 +77,7 @@ async def get_hot_jobs(db: AsyncSession = Depends(get_db)):
 
 @router.get("/{job_id}", response_model=Result[JobDetailOut], summary="通过job_id职位详情")
 async def get_job(job_id: int, db: AsyncSession = Depends(get_db)):
-    """职位详情。
-
-    查不到抛 NotFoundError。
-    """
+    """职位详情, 查不到抛 NotFoundError。"""
     stmt = select(Job).where(Job.id == job_id)
     job = await db.scalar(stmt)
     if job is None:
@@ -110,25 +100,18 @@ async def unfavorite_job_api(job_id: int, db: AsyncSession = Depends(get_db), cu
 
 @router.post("/applications/{job_id}/submit", response_model=Result, summary="已投递")
 async def submit_application_api(job_id: int, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
-    """
-    把这个职位的 status 设为 submitted,记录进求职进度。
-    """
     await submit_application(job_id, db, current_user.id)
     return Result.success(message="已记录投递")
 
 
 @router.get("/applications/favorite-ids", response_model=Result[List[int]], summary="我收藏的职位id列表")
 async def get_favorite_ids(db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
-    """查当前用户收藏的职位 id 列表(只返回 id)。
-
-    供前端进详情页时判断"这个职位我收没收藏"。
-    """
+    """查当前用户收藏的职位 id 列表。"""
     stmt = select(Application.job_id).where(
         Application.user_id == current_user.id,
         Application.is_favorited == 1,      # 改用独立的收藏维度字段
         Application.is_deleted == 0,
     )
-    # 注意:AsyncSession 没有 await db.scalars(),要用 db.execute() + .scalars()
     result = await db.execute(stmt)
     ids = result.scalars().all()
     return Result.success(data=ids)
@@ -136,11 +119,7 @@ async def get_favorite_ids(db: AsyncSession = Depends(get_db), current_user=Depe
 
 @router.get("/applications/applied-ids", response_model=Result[List[int]], summary="我已投递的职位id列表")
 async def get_applied_ids(db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
-    """查当前用户已投递的职位 id 列表(只返回 id)。
-
-    供前端进详情页时判断"这个职位我投没投过"。
-    投递的判定:status 不为 None(纯收藏 status=None 不算投递)。
-    """
+    """查当前用户已投递的职位 id 列表(status 不为 None 才算投递, 纯收藏不算)。"""
     stmt = select(Application.job_id).where(
         Application.user_id == current_user.id,
         Application.status.is_not(None),    # 只看真正投递过的

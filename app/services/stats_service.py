@@ -114,25 +114,10 @@ async def count_job_trend(db: AsyncSession):
 
 
 async def count_skill_trend(db: AsyncSession, skills: list[str], months: int = 6):
-    """
-    技能需求月度趋势: 指定技能在近 N 个月每月出现的岗位数。
-
-    月份取数据里实际存在的最近 N 个月(publish_at 分组), 没有数据的月份不出现在横轴上。
-
-    Args:
-        skills: 技能名列表, 空则自动取热门技能前 5
-        months: 统计的月份数(3~12)
-
-    Returns:
-        {
-            "month": ["2026-03", ...],          # 横轴(旧→新)
-            "skills": ["Python", "Java", ...],   # 实际返回的技能
-            "series": {"Python": [10, 20, ...], ...}  # 每个技能按月的岗位数
-        }
-    """
+    """技能需求月度趋势。skills 传空自动取热门前5, 月份按数据里实际存在的取。"""
     month_expr = func.date_format(Job.publish_at, "%Y-%m")
 
-    # 未指定技能 → 取热门技能前 5 作为默认
+    # 没指定技能就取热门前5
     if not skills:
         hot_stmt = (
             select(Skill.name)
@@ -143,7 +128,7 @@ async def count_skill_trend(db: AsyncSession, skills: list[str], months: int = 6
         )
         skills = [row[0] for row in (await db.execute(hot_stmt)).all()]
 
-    # 横轴: 数据里实际存在的最近 N 个月(旧→新)
+    # 横轴: 数据里存在的最近 N 个月
     month_stmt = (
         select(month_expr.label("month"))
         .where(Job.publish_at.isnot(None))
@@ -154,7 +139,7 @@ async def count_skill_trend(db: AsyncSession, skills: list[str], months: int = 6
     month_rows = list(reversed((await db.execute(month_stmt)).all()))
     month_list = [row.month for row in month_rows]
 
-    # 逐月逐技能统计岗位需求数
+    # 逐月逐技能统计
     stmt = (
         select(
             month_expr.label("month"),
@@ -171,7 +156,7 @@ async def count_skill_trend(db: AsyncSession, skills: list[str], months: int = 6
     )
     rows = (await db.execute(stmt)).all()
 
-    # (月份, 技能) → 数量 的查找表, 缺失月份补 0
+    # 缺失月份补0
     count_map = {(row.month, row.skill): row.cnt for row in rows}
 
     series = {
@@ -230,12 +215,7 @@ async def count_education_distribution(db: AsyncSession):
 
 
 async def count_experience_salary(db: AsyncSession):
-    """经验要求 × 平均薪资(数据已由 @validates 归一化到标准 5 档)。
-
-    Returns:
-        {"labels": ["应届","1-3年",...], "values": [10, 26, 35, 37, 52]}
-        values 是平均薪资, 单位 K(千元), 方便雷达图显示
-    """
+    """经验要求 × 平均薪资(单位K, 雷达图用, 数据已归一化到 5 档)。"""
     # 平均薪资 = (salary_min + salary_max) / 2, 再除以1000转成K
     avg_salary_k = (func.avg((Job.salary_min + Job.salary_max) / 2) / 1000).label("avg_k")
 
@@ -251,7 +231,6 @@ async def count_experience_salary(db: AsyncSession):
     result = await db.execute(stmt)
     rows = result.all()
 
-    # 固定顺序返回(雷达图轴顺序), "不限"代表经验不限/应届可投
     order = ["不限", "1-3年", "3-5年", "5-10年", "10年+"]
     salary_map = {row[0]: round(float(row[1]), 1) for row in rows}
     return {

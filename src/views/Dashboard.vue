@@ -186,7 +186,7 @@ const expRadarChartRef = ref(null)
 const sourceChartRef = ref(null)
 const skillTrendChartRef = ref(null)
 
-// 技能需求演化(时序): 可选技能 + 当前选择 + 时间窗
+// 技能需求演化: 可选技能 + 时间窗
 const skillOptions = ref([])
 const selectedSkills = ref([])
 const trendMonths = ref(6)
@@ -324,9 +324,9 @@ const renderTrendChart = async () => {
   initChart('trend', trendChartRef.value, option)
 }
 
-// 技能需求演化(多技能 × 月度 折线, 时序分析核心图)
+// 技能需求演化(多技能月度折线)
 const renderSkillTrendChart = async () => {
-  // 没选技能时清空图表, 不发请求
+  // 没选技能就清空, 不发请求
   if (!selectedSkills.value.length) {
     initChart('skillTrend', skillTrendChartRef.value, {
       xAxis: { type: 'category', data: [] },
@@ -447,7 +447,7 @@ const loadAllCharts = async () => {
   try { renderSkillChart() } catch (e) { console.error('技能图失败:', e) }
   try { renderIndustryChart() } catch (e) { console.error('行业图失败:', e) }
   try { renderTrendChart() } catch (e) { console.error('趋势图失败:', e) }
-  // 技能需求演化: 先拿热门技能做选项, 默认勾选 Top5
+  // 先拿热门技能做选项, 默认勾 Top5
   try {
     const hot = await request.get('/stats/skills/hot')
     skillOptions.value = hot.name || []

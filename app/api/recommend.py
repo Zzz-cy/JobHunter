@@ -20,17 +20,8 @@ async def get_recommend(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """根据指定简历推荐匹配岗位。
-
-    阶段③: 纯 SQL 技能匹配(strategy="skill")
-    阶段④⑤ 会逐步接入向量召回 + LLM 重排, 但本路由签名不变, 前端无感升级。
-
-    Query 参数:
-        resume_id: 用哪份简历做推荐(必填)
-
-    鉴权:
-        必须登录(token 解析出 current_user);
-        service 层会校验该简历是否属于 current_user, 防越权用别人简历推。
+    """
+    根据指定简历推荐匹配岗位，必须登录。
     """
     result = await recommend_service(
         resume_id=resume_id,

@@ -1,13 +1,4 @@
-"""
-Schema 聚合包
-
-import 本包即可拿到所有对外 schema, 写法更短:
-    from app.schemas import Result, BizCode, PageParams, PageResult, SchemaBase
-
-组织方式(对齐 models 包):
-    - base.py:     基类 SchemaBase / ORMOut
-    - 后续新增的用户/简历等 schema 在这里追加 __all__ 即可
-"""
+"""Schema 聚合包: import 本包即可拿到所有对外 schema。"""
 from app.schemas.base import ORMOut, SchemaBase
 from app.schemas.page import PageParams, PageResult
 from app.schemas.result import BizCode, Result

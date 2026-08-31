@@ -1,29 +1,12 @@
-"""
-业务异常定义
+"""业务异常定义。
 
-设计思想:
-    "错误就该用异常表达"(raise), 但又要保持全站统一 Result 返回格式。
-    解决方案: 定义业务异常类, 用全局异常处理器把它转成 Result JSON。
-
-    路由代码:    raise BizException("用户已存在", code=BizCode.CONFLICT)
-                         ↓ FastAPI 捕获异常
-    异常处理器:  把 BizException 转成 Result.fail(...).model_dump()
-                         ↓
-    前端收到:    {"code": 104, "message": "用户已存在", "data": null}   ← 统一格式!
+路由 raise BizException → 全局异常处理器统一转成 Result JSON 返回前端。
 """
 from app.schemas.result import BizCode
 
 
 class BizException(Exception):
-    """业务异常基类。
-
-    所有业务错误(用户已存在/职位不存在/权限不足...)都抛这个或它的子类。
-    全局异常处理器(exception_handlers.py)会捕获它, 转成统一 Result 格式。
-
-    Args:
-        message: 给前端展示的错误提示
-        code:    业务码(见 BizCode), 默认 FAIL=1
-    """
+    """业务异常基类, 被全局处理器捕获后转成 Result.fail。"""
 
     def __init__(self, message: str = "操作失败", code: int = BizCode.FAIL):
         self.message = message
@@ -34,11 +17,9 @@ class BizException(Exception):
         return f"BizException(code={self.code}, message={self.message!r})"
 
 
-# ============================================================
+
 # 常用异常快捷工厂(让路由代码更短)
 # 用法: raise NotFoundError("职位不存在")
-#       raise ConflictError("用户已存在")
-# ============================================================
 class NotFoundError(BizException):
     """资源不存在(404 业务码)。"""
 

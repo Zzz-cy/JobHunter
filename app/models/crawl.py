@@ -20,9 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, BigIntPk
 
 
-# ============================================================
 # 数据源配置
-# ============================================================
 class CrawlSource(Base):
     """爬虫数据源配置(boss/liepin/qcc 等)。
 
@@ -53,9 +51,7 @@ class CrawlSource(Base):
         return f"<CrawlSource(id={self.id}, name={self.name!r}, type={self.type!r})>"
 
 
-# ============================================================
 # 任务执行记录
-# ============================================================
 class CrawlTask(Base):
     """爬虫任务执行记录。"""
 
@@ -89,7 +85,7 @@ class CrawlTask(Base):
         nullable=False,
     )
 
-    # ---------- 关系 ----------
+    # 关系
     source: Mapped[CrawlSource] = relationship(back_populates="tasks")
 
     def __repr__(self) -> str:

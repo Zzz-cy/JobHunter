@@ -1,6 +1,5 @@
 """
-认证相关路由(注册/登录)
-
+认证相关路由
 """
 
 from fastapi import APIRouter, Depends
@@ -16,9 +15,7 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 @router.post("/register", response_model=Result, summary="用户注册")
 async def register_user(payload: RegisterSchema, db: AsyncSession = Depends(get_db)):
     """
-    - 入参 RegisterSchema 已校验: 手机号/邮箱格式、密码长度、至少传一个账号
-    - 这里只校验"账号是否已存在"(数据库唯一性)
-    - 注册成功只返回提示, 不返回用户信息(注册不等于登录)
+    接收手机号、邮箱和密码，返回成功
     """
     await register(payload, db)
     return Result.success(message="注册成功")

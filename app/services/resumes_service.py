@@ -51,21 +51,12 @@ def _validate_file(file: UploadFile) -> str:
 async def save_resume_file(file: UploadFile, user_id: int, db: AsyncSession, title: str | None = None) -> Resume:
     """接收文件 + 存本地 + 建简历记录(状态 pending)。
 
-    流程:
-        1. 校验文件(类型/大小)
-        2. 读文件内容到内存(校验大小)
-        3. 生成唯一文件名, 写入 uploads/resumes/
-        4. 在 resumes 表建记录(parse_status='pending', name 先填占位)
-    title: 用户自定义的简历标题, 可不传, 为空时卡片会回退显示姓名
-    Returns: 新建的 Resume 对象(已 commit, 含 id)
-    Note:
-        name 字段是 NOT NULL, 但上传时还没解析, 这里先填 "待解析",
-        等 AI 解析完成后由后续步骤更新成真实姓名。
+    name 是 NOT NULL 但还没解析, 先填"待解析", 解析完再更新。
     """
-    # ---------- 1. 校验 ----------
+    # 校验
     source_type = _validate_file(file)
 
-    # ---------- 2. 读内容 + 校验大小 ----------
+    # 读内容 + 校验大小
     content = await file.read()
     max_bytes = settings.RESUME_MAX_SIZE_MB * 1024 * 1024
     if len(content) > max_bytes:
@@ -76,24 +67,22 @@ async def save_resume_file(file: UploadFile, user_id: int, db: AsyncSession, tit
     if len(content) == 0:
         raise ParamError("文件为空")
 
-    # ---------- 3. 存文件 ----------
-    # 目录: uploads/resumes/ (相对 backend/ 根目录)
+    # 存文件
+    # 目录: uploads/resumes/
     # 结果: Path("uploads/resumes")
     upload_dir = Path(settings.UPLOAD_DIR) / "resumes"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     # 文件名: uuid 防重名覆盖, 保留原后缀
-    suffix = Path(file.filename).suffix.lower()  # 取文件后缀，如1.pdf，就取.pdf
-    # uuid.uuid4() 生成随机 UUID, 如 UUID('550e8400-e29b-41d4-a716-446655440000')
-    # uuid.uuid4().hex 去掉横线,最后和后缀拼接起来
+    suffix = Path(file.filename).suffix.lower()
     stored_name = f"{uuid.uuid4().hex}{suffix}"
-    file_path = upload_dir / stored_name  # 路径 uploads/resumes/xxx.pdf
-    file_path.write_bytes(content)  # 把字节内容写入文件
+    file_path = upload_dir / stored_name
+    file_path.write_bytes(content)
 
     # 数据库存的 URL: 相对路径(前端拼后端域名访问, 或以后挂 OSS)
     file_url = f"/uploads/resumes/{stored_name}"
 
-    # ---------- 4. 建简历记录 ----------
+    # 建简历记录
     # 如果是用户的第一份简历, 自动设为默认(is_primary=1)
     from sqlalchemy import func as _func
     existing_count = await db.scalar(
@@ -166,10 +155,8 @@ async def get_all(db: AsyncSession, user_id: int) -> List[Resume]:
 
 # 简历 AI 解析，发请求给llm
 async def call_llm_parse(file_path: str, resume_id: int, source_type: str) -> dict:
-    """调队友的 LLM 服务, 把简历文件解析成 JSON。
-
-    同机部署方案: 只传本地绝对路径给 LLM, LLM 自己 open() 读文件。
-    不传文件二进制(省带宽), LLM 不直连数据库(职责分离)。
+    """
+    把简历文件解析成 JSON。
     """
     payload = {
         "file_url": file_path,  # 队友接口字段名是 file_url(传本地绝对路径)
@@ -217,14 +204,9 @@ async def find_skill_by_name(db: AsyncSession, name: str) -> Skill | None:
 
 # 数据入库
 async def save_parsed_result(db: AsyncSession, resume_id: int, parsed: dict) -> None:
-    """把 LLM 返回的 JSON 拆开存到 4 张表。
+    """把 LLM 返回的 JSON 拆开存到 4 张表(主表字段 + 经历 + 教育 + 技能)。
 
-    - resumes 主表: 存 name/age/phone 等单值字段
-    - resume_experiences: 存工作经历(一对多)
-    - resume_educations: 存教育经历(一对多)
-    - resume_skills: 存技能(需查字典表归一)
-
-    注意: 原始 JSON 也存一份到 parsed_raw 字段, 便于调试回溯。
+    原始 JSON 也存一份到 parsed_raw, 便于调试回溯。
     """
     resume = await db.get(Resume, resume_id)
     if not resume:
@@ -261,10 +243,8 @@ async def save_parsed_result(db: AsyncSession, resume_id: int, parsed: dict) -> 
             degree=edu.get("degree"),
         ))
 
-    # ---------- 4. 存技能(需查字典表归一) ----------
-    # LLM 只返回技能名数组, 这里负责映射到标准 skill_id
-    # 按 skill_id 去重: LLM 可能返回重复技能, 或两个写法归一到同一字典技能
-    # (如 "Python" 和 "Python3" 都归到 SK_PY), 不去重会撞 uk_resume_skill 唯一键
+    # ---------- 4. 存技能(查字典表归一) ----------
+    # 按 skill_id 去重, LLM 偶尔会重复返回, 不去重会撞 uk_resume_skill
     seen_skill_ids: set[int] = set()
     for skill_name in parsed.get("skills", []):
         skill = await find_skill_by_name(db, skill_name)
@@ -276,14 +256,7 @@ async def save_parsed_result(db: AsyncSession, resume_id: int, parsed: dict) -> 
 
 # 完整解析流程: 调 LLM + 拆 JSON + 存 4 张表 + 更新状态机
 async def parse_and_save_resume(db: AsyncSession, resume_id: int) -> Resume:
-    """完整解析流程: 调 LLM + 拆 JSON + 存 4 张表 + 更新状态机。
-
-    状态流转: pending → parsing → done / failed
-
-    使用场景:
-        上传成功后立即调用(同步等待 LLM 返回)。
-        或以后改成 BackgroundTask(异步, 前端轮询状态)。
-    """
+    """完整解析流程: 状态机 pending → parsing → done/failed。"""
     resume = await db.get(Resume, resume_id)
     if not resume:
         raise ParamError(f"简历不存在: id={resume_id}")

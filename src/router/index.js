@@ -71,7 +71,6 @@ const routes = [
         meta: { title: '数据分析', requiresAuth: false }
       },
       {
-        // 岗位知识图谱(Neo4j): 方向画像 + 力导向图可视化
         path: 'knowledge-graph',
         name: 'KnowledgeGraph',
         component: () => import('@/views/KnowledgeGraph.vue'),

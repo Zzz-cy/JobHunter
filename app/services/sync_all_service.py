@@ -1,18 +1,7 @@
-"""
-一键全库同步服务(MySQL → ES / ChromaDB / Neo4j)
+"""一键全库同步服务(MySQL → ES / ChromaDB / Neo4j)。
 
-用途: 爬虫产出新的 jobs_raw.json 后, 点一个按钮把四个库全部同步到位:
-    1. MySQL     导入 jobs_raw.json(幂等, 按 source+source_id 去重)
-    2. ES        全量同步职位(幂等, _id=MySQL主键)
-    3. ChromaDB  构建职位向量(供推荐系统语义匹配)
-    4. Neo4j     重建知识图谱(岗位 + 就业分析)
-
-设计要点:
-    - 跑在 FastAPI 的 BackgroundTasks(主事件循环) → AsyncSessionLocal 随便用,
-      没有线程跨事件循环的问题(上次爬虫线程方案的坑)
-    - 每步独立 try: 一步失败(如 Neo4j 没启动)标记 failed, 继续同步其他库
-    - 全局状态 dict 供前端轮询; 各步耗时分钟级, 不是爬虫那种 40 分钟
-    - Neo4j 脚本是同步代码, 用 asyncio.to_thread 扔线程池执行, 不卡事件循环
+爬虫产出新 jobs_raw.json 后一键把四个库同步到位。
+每步独立容错, 单库没启动只标记该步失败。全局状态 dict 供前端轮询。
 """
 import asyncio
 import json
@@ -25,7 +14,7 @@ from app.core.config import settings
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
 _JOBS_RAW_PATH = _BACKEND_DIR / "db" / "data" / "jobs_raw.json"
 
-# ---------- 全局状态(前端轮询读) ----------
+# 全局状态(前端轮询读)
 _sync_state: dict = {
     "running": False,
     "steps": [],          # [{"key","name","status","message"}, ...] pending/running/done/failed/skipped
@@ -93,8 +82,7 @@ def _step_neo4j_sync() -> str:
 
     import scripts.init_neo4j as init_neo4j
 
-    # 注入 Neo4j 密码到环境变量: 脚本优先读它, 避免后台无终端时
-    # 卡在 getpass 交互输入(.env 由 pydantic 读, 不会自动进 os.environ)
+    # 注入 Neo4j 密码到环境变量: 脚本优先读它, 避免后台无终端卡在 getpass 交互
     if settings.NEO4J_PASSWORD:
         os.environ["NEO4J_PASSWORD"] = settings.NEO4J_PASSWORD
 

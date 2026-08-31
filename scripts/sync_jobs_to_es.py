@@ -1,17 +1,7 @@
-"""
-MySQL → ES 全量同步脚本(把 jobs 职位数据灌进 Elasticsearch)
+"""MySQL → ES 全量同步脚本。
 
-用途: 职位搜索接口改用 ES 前, 先把 MySQL 现有数据全量导入一次。
-用法:
-    cd backend
-    python -m scripts.sync_jobs_to_es
-
-设计要点:
-    1. 文档结构是"冗余拍平"的: ES 不做 JOIN, 把 company_name / skills
-       这些关联表的字段平铺进一个文档(空间换查询速度)
-    2. _id 用 MySQL 主键 → 重复跑脚本不会产生重复数据(天然幂等)
-    3. helpers.bulk 批量写入(500 条/批), 1 万条几秒完成
-    4. 复用 ORM 的 selectin 预加载, 避免 N+1
+文档是冗余拍平的(company_name/skills 平铺, ES 不做 JOIN)。
+_id 用 MySQL 主键, 重复跑天然幂等。helpers.bulk 分批写入。
 """
 import asyncio
 

@@ -1,17 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-生成简历解析评测用的测试简历(PDF) + 标准答案(ground_truth.json)
+"""生成评测用的测试简历(PDF) + 标准答案。
 
-用法(在 backend 目录下):
-    .venv\\Scripts\\python.exe evaluation\\gen_resumes.py
-
-产物:
-    evaluation/test_resumes/*.pdf    10 份测试简历(ATS 纯文本版式, 含姓名/基本信息/教育/工作/技能)
-    evaluation/ground_truth.json     标准答案(与 PDF 同源数据生成, 保证 100% 准确)
-
-说明:
-    - 技能名全部选自 skills 字典表的标准名(02_seed.sql), 便于解析后归一比对
-    - 每份简历覆盖不同岗位方向/学历/年限/城市, 增强评测代表性
+技能名全取自 skills 字典表的标准写法, 方便解析后归一比对。
+10 份简历覆盖不同方向/学历/年限, 保证代表性。
 """
 import json
 from pathlib import Path
@@ -23,16 +14,14 @@ from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import ParagraphStyle
 
-# 注册中文字体(ReportLab 内置 CID 字体, 无需字体文件)
+# 注册中文字体
 pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
 
 EVAL_DIR = Path(__file__).resolve().parent
 OUT_DIR = EVAL_DIR / "test_resumes"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ============================================================
 # 10 份简历档案(PDF 内容与标准答案的唯一数据源)
-# ============================================================
 RESUMES = [
     {
         "file": "resume_01_liwei.pdf",
@@ -219,9 +208,7 @@ RESUMES = [
 ]
 
 
-# ============================================================
 # PDF 样式(ATS 纯文本版式: 无表格无图形, 方便 LLM 抽取)
-# ============================================================
 S_NAME = ParagraphStyle("name", fontName="STSong-Light", fontSize=20, leading=26, spaceAfter=2)
 S_INTENT = ParagraphStyle("intent", fontName="STSong-Light", fontSize=12, leading=18, textColor="#333333")
 S_SECTION = ParagraphStyle("section", fontName="STSong-Light", fontSize=13, leading=18,
@@ -231,7 +218,6 @@ S_ITEM = ParagraphStyle("item", fontName="STSong-Light", fontSize=10.5, leading=
 
 
 def fmt_date(d: str) -> str:
-    """2021-03 → 2021.03"""
     return d.replace("-", ".")
 
 

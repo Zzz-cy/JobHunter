@@ -18,7 +18,7 @@ class Skill(Base, TimestampMixin):
     """技能标准化字典。
 
     与 Neo4j 中的 Skill 节点一一对应, alias 用于规则匹配。
-    字典表不做软删除(直接物理删除或建黑名单)。
+    字典表不做软删除
     """
 
     __tablename__ = "skills"
@@ -30,7 +30,7 @@ class Skill(Base, TimestampMixin):
     category: Mapped[str | None] = mapped_column(String(64), index=True)
     is_hot: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
 
-    # ---------- 反向关系 ----------
+    # 反向关系
     # 供 JobSkill.skill 反向引用; 查"某技能被多少职位需要"时也用得到。
     job_skills: Mapped[list["JobSkill"]] = relationship(  # noqa: F821
         back_populates="skill",
@@ -40,11 +40,9 @@ class Skill(Base, TimestampMixin):
         return f"<Skill(id={self.id}, name={self.name!r}, category={self.category!r})>"
 
 
-# ============================================================
 # 行业字典
-# ============================================================
 class Industry(Base):
-    """行业/城市层级字典(自引用树状结构)。
+    """行业/城市层级字典
 
     纯字典表, 不带时间戳/软删除, 主键 INT(不是 BIGINT)。
     """

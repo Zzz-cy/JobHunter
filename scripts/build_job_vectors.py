@@ -1,22 +1,10 @@
 """构建岗位向量库(ChromaDB)。
 
-把 MySQL 里的岗位 JD 文本, 通过 GLM embedding-3 转成向量, 存进 ChromaDB。
-之后阶段④ 推荐召回时, 把简历也转成向量, 在这个库里找"语义最相似"的岗位。
+把 MySQL 岗位 JD 用 GLM embedding-3 转向量存库, 推荐召回时查语义最相似的岗位。
 
-用法:
-    cd backend
-    python -m scripts.build_job_vectors              # 增量建库(跳过已存在的)
-    python -m scripts.build_job_vectors --rebuild     # 全量重建(先清空再建)
-    python -m scripts.build_job_vectors --limit 5     # 只建前 5 条(调试用)
-
-设计要点:
-    1. JD 文本拼接 = 标题 + 技能名 + JD正文
-       为什么拼技能名: embedding 模型理解"Python工程师"和"会Python的岗位"语义相近,
-       关键是技能词要出现在文本里。只拼正文的话, 有些 JD 正文很泛,
-       技能词埋在段落深处, 向量里技能特征就被稀释了。
-    2. 增量建库: 已在向量库里的 job_id 跳过(省 API 调用费, embedding 不便宜)
-    3. 批量调用: 一次 embed_batch 多条, 比逐条 embed 省 N-1 次网络往返
-    4. 进度打印: 每批打印一次, 调用方能直观看到进展
+python -m scripts.build_job_vectors              # 增量(跳过已存在)
+python -m scripts.build_job_vectors --rebuild    # 全量重建
+python -m scripts.build_job_vectors --limit 5    # 只建前 5 条(调试)
 """
 from __future__ import annotations
 
@@ -24,7 +12,6 @@ import argparse
 import sys
 from pathlib import Path
 
-# 保证从 backend/ 目录运行时, app 包能被正确导入
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import select  # noqa: E402
@@ -39,25 +26,15 @@ from app.services.vector_service import (  # noqa: E402
 )
 from app.services import vector_service  # noqa: E402
 
-# 每批处理多少条。智谱单次 embedding 建议不超过 64 条, 这里保守取 20。
-# 现在测试数据只有 15 条, 一次就够; 将来上千条时这个分批才真正发挥作用。
+# 每批处理条数(智谱单次建议 ≤64, 保守取 20)
 _BATCH_SIZE = 20
 
 
 def _build_jd_text(job: Job, skill_names: list[str]) -> str:
-    """把一条岗位的零散信息, 拼成一段适合 embedding 的自然文本。
+    """岗位信息拼成 embedding 文本: 标题 + 技能 + 正文。
 
-    拼接顺序: 标题 + 技能 + 正文
-    技能放在标题后面、正文前面, 是为了让技能词在文本前段(embedding 的
-    注意力机制对前段文本通常更敏感)。
-
-    Args:
-        job:         Job ORM 对象
-        skill_names: 该岗位要求的技能名列表(如 ["Python", "MySQL", "Redis"])
-
-    Returns:
-        拼好的 JD 文本, 例如:
-        "资深Python后端工程师 | 技能: Python, MySQL, Redis | 岗位职责: ..."
+    技能放前段(embedding 对前段文本更敏感), 技能词必须出现在文本里,
+    不然埋在 JD 正文深处特征会被稀释。
     """
     parts = [job.title]
     if skill_names:
@@ -68,11 +45,7 @@ def _build_jd_text(job: Job, skill_names: list[str]) -> str:
 
 
 async def fetch_active_jobs(limit: int | None) -> list[Job]:
-    """从 MySQL 拉所有在招且有正文的岗位(含技能名)。
-
-    用 joinedload 一次性把 JobSkill + Skill 关联查出, 避免 N+1 查询。
-    (虽然 Job model 默认 lazy=selectin 会自动预加载, 但显式 joinedload 更清晰)
-    """
+    """拉所有在招且有正文的岗位, joinedload 一次带出技能名避免 N+1。"""
     stmt = (
         select(Job)
         .options(joinedload(Job.skills).joinedload(JobSkill.skill))
@@ -107,9 +80,8 @@ async def run_build(rebuild: bool = False, limit: int | None = None) -> int:
 
         # ---------- 2. 可选: 全量重建 ----------
         if rebuild:
-            # 删旧集合 → 重新建空集合。ChromaDB 的 delete_collection 是惰性删除,
-            # 删除后磁盘上的 <uuid>/*.bin 文件夹不会立即清掉(每个 ~833KB),
-            # 反复 --rebuild 会让向量库文件夹越来越大。所以这里手动清理孤儿。
+            # delete_collection 是惰性删除, 磁盘上的集合目录不会立即清,
+            # 反复 --rebuild 会越积越多, 手动清理孤儿目录
             import chromadb
             import shutil
 
@@ -167,9 +139,7 @@ async def run_build(rebuild: bool = False, limit: int | None = None) -> int:
         print(f"       存储位置: {vector_service.settings.CHROMA_PATH}")
         return 0
     finally:
-        # 无论走哪个分支(含增量跳过的早 return), 都要关闭连接池,
-        # 否则 aiomysql 在脚本退出时报 "Event loop is closed"
-        # (参考 scripts/import_jobs.py 的处理方式)
+        # 不关连接池, aiomysql 退出时报 "Event loop is closed"
         await engine.dispose()
 
 

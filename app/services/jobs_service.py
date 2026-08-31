@@ -10,17 +10,7 @@ from app.schemas import JobSearchSchema
 
 
 def _parse_salary_range(salary_range: str | None) -> tuple[int | None, int | None]:
-    """解析前端传来的薪资区间字符串。
-
-    前端格式: "10-20" / "0-10" / "50-"
-    单位是 K, 转成元(salary_min/max 存的是元/月)。
-    返回 (min_k, max_k), None 表示该端不限。
-
-    例:
-        "10-20" → (10000, 20000)
-        "0-10"  → (0, 10000)
-        "50-"   → (50000, None)   # 上限不限
-    """
+    """解析薪资区间 "10-20" / "50-"(单位K) → (元下限, 元上限), None 表示不限。"""
     if not salary_range:
         return None, None
     parts = salary_range.split("-")
@@ -40,11 +30,7 @@ _SORT_MAP = {
 
 
 async def query(job: JobSearchSchema, db: AsyncSession):
-    """
-    根据条件查询工作
-    :param job: 入参
-    :param db: 数据库
-    """
+    """按条件分页查询职位, 返回 (当前页列表, 总数)。"""
     conditions = [Job.is_deleted == 0, Job.status == "active"]
 
     need_join_skill = bool(job.keyword)  # 有 keyword 才连技能表
@@ -113,13 +99,7 @@ async def query(job: JobSearchSchema, db: AsyncSession):
 
 
 async def favorite_job(job_id: int, db: AsyncSession, user_id: int):
-    """收藏职位
-
-    只动 is_favorited 字段,不动 status。
-    收藏和投递是两个独立维度,组合自由:
-        - 收藏但没投递:is_favorited=1, status=None
-        - 投递过 + 也收藏:is_favorited=1, status='submitted'
-    """
+    """收藏职位。只动 is_favorited, 收藏和投递是两个独立维度。"""
     stmt = select(Application).where(
         Application.user_id == user_id,
         Application.job_id == job_id,
@@ -140,11 +120,7 @@ async def favorite_job(job_id: int, db: AsyncSession, user_id: int):
 
 
 async def submit_application(job_id: int, db: AsyncSession, user_id: int):
-    """
-    投递和收藏独立:
-        - 之前收藏过:直接把 status 设为 submitted(收藏状态保留)
-        - 没记录:新建一条 status=submitted
-    """
+    """投递职位。收藏过就改 status, 没记录就新建(收藏状态不动)。"""
     stmt = select(Application).where(
         Application.user_id == user_id,
         Application.job_id == job_id,
@@ -168,11 +144,7 @@ async def submit_application(job_id: int, db: AsyncSession, user_id: int):
 
 
 async def unfavorite_job(job_id: int, db: AsyncSession, user_id: int):
-    """取消收藏(只动 is_favorited, 不删记录)。
-
-    不直接删记录的原因: 用户可能还在投递中(status=submitted/interviewed),
-    取消收藏不该影响投递进度。只有"既没收藏又没投递"的记录才软删除。
-    """
+    """取消收藏。不删记录(用户可能在投递中), 只有没收藏又没投递的才软删。"""
     stmt = select(Application).where(
         Application.user_id == user_id,
         Application.job_id == job_id,
@@ -190,13 +162,7 @@ async def unfavorite_job(job_id: int, db: AsyncSession, user_id: int):
 
 
 async def find_similar_jobs(db: AsyncSession, job_id: int):
-    """找相似职位(按技能重叠数排序)。
-
-    规则:
-        1. 拿当前职位的所有技能 id
-        2. 找其他职位里, 技能重叠最多的
-        3. 排除自己 + 只看在招的
-    """
+    """找相似职位: 技能重叠数排序, 排除自己只看在招, 取前5。"""
     skill_ids_result = await db.scalars(
         select(JobSkill.skill_id).where(JobSkill.job_id == job_id)
     )
@@ -223,15 +189,9 @@ async def find_similar_jobs(db: AsyncSession, job_id: int):
     return result.unique().all()  # unique() 去重(selectin 会产生重复父行)
 
 
-# ES 版职位搜索(架构: ES 查 id + 排序, MySQL 取详情)
+# ES 版职位搜索(ES 查 id + 排序, MySQL 取详情)
 def _build_es_query(params: JobSearchSchema) -> dict:
-    """把搜索入参翻译成 ES 的 DSL 查询体。
-
-    设计要点:
-        - keyword 放 must(参与相关度算分, 排序用 _score)
-        - 精确筛选放 filter(不算分, 可被 ES 缓存, 快)
-        - 排序: 有 keyword 按相关度, 无 keyword 按发布时间/薪资
-    """
+    """搜索入参 → ES DSL。keyword 放 must 算相关度, 筛选放 filter 不算分。"""
     must = []
     # 基础过滤: 只搜在招职位(等价原 MySQL 的 status=='active')
     filter = [{"term": {"job_status": "active"}}]
@@ -282,10 +242,9 @@ def _build_es_query(params: JobSearchSchema) -> dict:
 
 
 async def search_jobs_es(params: JobSearchSchema, db: AsyncSession) -> tuple[list[Job], int]:
-    """ES 版搜索: 关键词+筛选+排序+分页在 ES 完成, 回 MySQL 取完整详情。
+    """ES 版搜索: 查询/排序/分页在 ES 完成, 回 MySQL 取详情。
 
-    Returns:
-        (当前页职位列表, 总数) — 与原 query() 返回结构完全一致, API 层无感
+    返回结构和 query() 一致, API 层无感。
     """
     body = _build_es_query(params)
     resp = es_client.search(index=JOBS_INDEX, body=body)
@@ -301,7 +260,7 @@ async def search_jobs_es(params: JobSearchSchema, db: AsyncSession) -> tuple[lis
         select(Job).where(Job.id.in_(ids))
     )).unique().all()
 
-    # ⚠️ in_() 查回来的顺序是乱的, 必须按 ES 返回的顺序重排
+    # in_() 查回来的顺序是乱的, 必须按 ES 返回的顺序重排
     # (ES 是按相关度/排序字段排好的, 不重排前端列表顺序就乱了)
     job_map = {j.id: j for j in jobs_raw}
     jobs = [job_map[i] for i in ids if i in job_map]

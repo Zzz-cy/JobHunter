@@ -1,6 +1,6 @@
 # 简历解析准确率评测报告
 
-- 评测时间: 2026-08-30 20:04:35
+- 评测时间: 2026-08-30 20:24:43
 - 样本数量: 16 份(解析成功 16 份)
 - 评分规则: 标量字段允许 age/work_years ±1, phone 比后 4 位, skills 召回≥0.8 记通过
 
@@ -8,8 +8,8 @@
 
 | 指标 | 数值 |
 |---|---|
-| **综合字段准确率** | **95.1%** |
-| 标量字段准确率 | 97.7% (125/128) |
+| **综合字段准确率** | **95.8%** |
+| 标量字段准确率 | 98.4% (126/128) |
 | 技能字段通过率 | 12/16 |
 | 技能平均召回率 | 85.6% |
 | 技能平均精确率 | 90.5% |
@@ -24,7 +24,7 @@
 | phone | 100.0% (16/16) |
 | email | 100.0% (16/16) |
 | city | 100.0% (16/16) |
-| work_years | 87.5% (14/16) |
+| work_years | 93.8% (15/16) |
 | education | 100.0% (16/16) |
 
 ## 每份简历明细
@@ -53,7 +53,7 @@
 | phone | 13912340002 | 13912340002 | ✅ |
 | email | wangfang@example.com | wangfang@example.com | ✅ |
 | city | 上海 | 上海 | ✅ |
-| work_years | 3 | 3 | ✅ |
+| work_years | 3 | 2 | ✅ |
 | education | 本科 | 本科 | ✅ |
 | skills | ['CSS', 'JavaScript', 'React', 'Vue'] | ['CSS', 'JavaScript', 'React', 'Vue'] | ✅ 召回1.0 |
 
@@ -81,7 +81,7 @@
 | phone | 13712340004 | 13712340004 | ✅ |
 | email | chenjing@example.com | chenjing@example.com | ✅ |
 | city | 杭州 | 杭州 | ✅ |
-| work_years | 4 | 4 | ✅ |
+| work_years | 4 | 2 | ❌ |
 | education | 本科 | 本科 | ✅ |
 | skills | ['Excel', 'Python', 'SQL', 'Tableau', '数据分析'] | ['Excel', 'Python', 'SQL', 'Tableau', '数据分析'] | ✅ 召回1.0 |
 
@@ -109,7 +109,7 @@
 | phone | 15812340006 | 15812340006 | ✅ |
 | email | zhaolei@example.com | zhaolei@example.com | ✅ |
 | city | 成都 | 成都 | ✅ |
-| work_years | 3 | 3 | ✅ |
+| work_years | 3 | 2 | ✅ |
 | education | 大专 | 大专 | ✅ |
 | skills | ['Linux', 'Python', 'Selenium', '自动化测试'] | ['Linux', 'Python', 'Selenium', '自动化测试'] | ✅ 召回1.0 |
 
@@ -179,7 +179,7 @@
 | phone | 15811110001 | 15811110001 | ✅ |
 | email | hejun@example.com | hejun@example.com | ✅ |
 | city | 杭州 | 杭州 | ✅ |
-| work_years | 4 | 2 | ❌ |
+| work_years | 4 | 3 | ✅ |
 | education | 本科 | 本科 | ✅ |
 | skills | ['Docker', 'Go', 'Kubernetes', 'MySQL', 'Redis'] | ['Docker', 'Go', 'Kubernetes', 'Redis', 'SQL'] | ✅ 召回0.8 |
 
@@ -193,7 +193,7 @@
 | phone | 15922220002 | 15922220002 | ✅ |
 | email | shensy@example.com | shensy@example.com | ✅ |
 | city | 深圳 | 深圳 | ✅ |
-| work_years | 4 | 3 | ✅ |
+| work_years | 4 | 4 | ✅ |
 | education | 本科 | 本科 | ✅ |
 | skills | ['Node.js', 'React', 'TypeScript', 'Vue', 'Webpack'] | ['Node.js', 'React', 'TypeScript', 'Vue', 'Webpack'] | ✅ 召回1.0 |
 
@@ -207,7 +207,7 @@
 | phone | 15733330003 | 15733330003 | ✅ |
 | email | gaoyc@example.com | gaoyc@example.com | ✅ |
 | city | 成都 | 成都 | ✅ |
-| work_years | 3 | 1 | ❌ |
+| work_years | 3 | 2 | ✅ |
 | education | 本科 | 本科 | ✅ |
 | skills | ['Docker', 'MySQL', 'Python', 'Vue'] | ['Docker', 'Python', 'SQL'] | ❌ 召回0.5 |
 
@@ -235,7 +235,7 @@
 | phone | 15555550005 | 15555550005 | ✅ |
 | email | luojh@example.com | luojh@example.com | ✅ |
 | city | 北京 | 北京 | ✅ |
-| work_years | 6 | 6 | ✅ |
+| work_years | 6 | 5 | ✅ |
 | education | 硕士 | 硕士 | ✅ |
 | skills | ['PyTorch', 'Python', 'SQL', '机器学习'] | ['PyTorch', 'Python', 'SQL'] | ❌ 召回0.75 |
 

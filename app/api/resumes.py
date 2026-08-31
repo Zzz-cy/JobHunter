@@ -16,28 +16,16 @@ router = APIRouter(prefix="/resumes", tags=["简历"])
 
 @router.post("/upload", response_model=Result[ResumeUploadOut], summary="上传简历")
 async def upload_resume(
-    # File(...) 标记这是文件上传字段(multipart/form-data), 不是 JSON，前端上传时必须用 FormData, 这个参数从 multipart/form-data 表单里取
+    # multipart 表单字段, 前端要用 FormData 传
     file: UploadFile = File(..., description="简历文件(PDF/PNG/JPG)"),
-    # title 跟 file 在同一个 multipart 表单里, 前端 formData.append('title', xxx)
     title: str | None = Form(None, description="用户自定义简历标题, 可不传"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),   # 上传简历必须登录
+    current_user=Depends(get_current_user),
 ):
-    """上传简历文件 + 同步触发 AI 解析。
-
-    流程:
-      1. 校验 + 存文件 + 建 resume 记录(status=pending)
-      2. 调队友 LLM 解析(同步等待, 可能 10-30 秒)
-      3. 拆 JSON 存 4 张表, 更新 status=done
-      4. 失败则 status=failed(不影响上传, 前端能看到状态)
-
-    解析失败时:
-      - resume 记录已建好(file 还在), 用户可重新解析
-      - 前端根据 parse_status 判断显示结果还是错误
-    """
-    # 1. 存文件 + 建记录
+    """上传简历 + 同步触发 AI 解析。解析失败只改状态, 不影响上传成功。"""
+    # 存文件 + 建记录
     resume = await save_resume_file(file, current_user.id, db, title=title)
-    # 2. 同步调 LLM 解析(失败不影响返回, status 会变 failed)
+    # 同步调 LLM 解析(失败不影响返回, status 会变 failed)
     resume = await parse_and_save_resume(db, resume.id)
     out = ResumeUploadOut.model_validate(resume)
     message = "上传并解析成功" if resume.parse_status == "done" else "上传成功, 但解析失败"
@@ -65,12 +53,10 @@ async def get_resume_file(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """返回简历原文件(PDF/PNG/JPG)。
-
-    鉴权: 只允许 resume 的所有者访问, 避免文件被其他用户(或未登录用户)通过 URL 拿到。
-    替代了之前直接 mount 的 /uploads/ 公开静态路由。
     """
-    # 1. 查简历记录(确认存在 + 确认归属)
+    返回简历原文件(PDF/PNG/JPG)。
+    """
+    # 查简历记录(确认存在 + 归属)
     resume = await db.scalar(
         select(Resume).where(
             Resume.id == resume_id,
@@ -80,15 +66,14 @@ async def get_resume_file(
     if resume is None or not resume.file_url:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="简历不存在或无权访问")
 
-    # 2. file_url 形如 "/uploads/resumes/xxx.pdf", 拼出磁盘真实路径
-    #    settings.UPLOAD_DIR 是相对 backend/ 的目录, 取相对于 cwd 解析
+    # file_url 形如 "/uploads/resumes/xxx.pdf", 拼磁盘真实路径
+    # (先去掉 "uploads/" 前缀再拼, 防前缀写死导致错位)
     rel_path = resume.file_url.lstrip("/")
-    # 去掉前缀 "uploads/" 后拼到 UPLOAD_DIR 下(防止 file_url 前缀写死导致路径拼接错位)
     if rel_path.startswith(f"{settings.UPLOAD_DIR}/"):
         rel_path = rel_path[len(settings.UPLOAD_DIR) + 1:]
     file_path = Path(settings.UPLOAD_DIR) / rel_path
 
-    # 3. 防目录穿越 + 文件存在性检查
+    # 文件存在性检查
     if not file_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
 
@@ -102,7 +87,7 @@ async def reparse_resume(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    # 校验简历归属(防止用户解析别人的简历)
+    # 校验简历归属
     resume = await db.scalar(
         select(Resume).where(
             Resume.id == resume_id,
@@ -124,7 +109,7 @@ async def set_primary(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """设为默认简历(互斥: 该用户其他简历自动取消默认)。"""
+    """设为默认简历"""
     await set_primary_resume(db, current_user.id, resume_id)
     return Result.success(message="已设为默认简历")
 

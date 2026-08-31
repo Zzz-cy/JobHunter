@@ -6,8 +6,7 @@ from datetime import datetime
 def generate_code(prefix: str) -> str:
     """通用编码生成: 前缀 + 日期 + 秒数 + 8位随机
 
-    Args:
-        prefix: 单字母前缀, 如 'J'(职位) / 'C'(公司) / 'U'(用户) / 'R'(简历)
+    prefix: 单字母前缀, 如 'J'(职位) / 'C'(公司) / 'U'(用户) / 'R'(简历)
     """
     now = datetime.now()
     date_part = now.strftime("%Y%m%d")

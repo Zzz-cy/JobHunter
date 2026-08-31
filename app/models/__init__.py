@@ -1,14 +1,4 @@
-"""
-模型聚合包
-
-import 本包即可触发所有模型注册到 Base.metadata,
-便于 alembic 迁移和 create_all 建表。
-
-用法:
-    from app.models import User, Resume
-    # 或
-    from app.models import Base
-"""
+"""模型聚合包: import 本包即注册所有模型到 Base.metadata。"""
 from app.models.base import Base
 from app.models.behavior import Application, ChatHistory, Recommendation
 from app.models.company import Company

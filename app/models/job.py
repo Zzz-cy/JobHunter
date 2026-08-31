@@ -23,9 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, BigIntPk, SoftDeleteMixin, TimestampMixin
 
 
-# ============================================================
 # 职位主表
-# ============================================================
 class Job(Base, TimestampMixin, SoftDeleteMixin):
     """职位主表(爬虫核心产物, MySQL 存元信息, ES 存全文检索)。"""
 
@@ -38,26 +36,22 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
         Integer, ForeignKey("companies.id"), index=True,
     )
 
-    # ---------- 基本信息 ----------
+    # 基本信息
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     department: Mapped[str | None] = mapped_column(String(128))
     city: Mapped[str | None] = mapped_column(String(64), index=True)
     district: Mapped[str | None] = mapped_column(String(64))
 
-    # ---------- 要求 ----------
+    # 要求
     experience_req: Mapped[str | None] = mapped_column(String(32))
     education_req: Mapped[str | None] = mapped_column(String(32))
 
-    # ---------- 字段验证器: 学历归一化(入库时自动清洗) ----------
+    # 字段验证器: 学历归一化(入库时自动清洗)
     from sqlalchemy.orm import validates
 
     @validates("education_req")
     def _normalize_education(self, key, value):
-        """写入 education_req 时自动归一化。
-
-         爬虫抓来的 education_req 脏乱差: '统招本科' '本科及以上' '学历不限' 等
-        这里在"写入时"自动归一到 5 个标准值: 博士/硕士/本科/大专/不限
-        """
+        """写入时把脏学历('统招本科'等)归一到 博士/硕士/本科/大专/不限。"""
         if not value:
             return None
         v = str(value)
@@ -69,13 +63,8 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
 
     @validates("experience_req")
     def _normalize_experience(self, key, value):
-        """写入 experience_req 时自动归一化到 5 档。
-
-        脏数据如 '3年以上' '经验不限' '2年以上' 归一到标准 5 档:
-          应届 / 1-3年 / 3-5年 / 5-10年 / 10年+ / 不限
-
-        ⚠️ 判断顺序从高到低(10年→5年→3年→1年), 避免误匹配:
-           "10年" 包含 "1", 先判断低的会把 10 年错归到 1-3 年。
+        """
+        写入时把脏经验要求归一到 5 档。
         """
         if not value:
             return None
@@ -89,33 +78,33 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
         if "1" in v or "2" in v: return "1-3年"
         return "应届"   # 应届/1年以内/无经验要求 等
 
-    # ---------- 薪资 ----------
+    # 薪资
     salary_min: Mapped[int | None] = mapped_column(Integer)
     salary_max: Mapped[int | None] = mapped_column(Integer)
     salary_unit: Mapped[str] = mapped_column(String(8), nullable=False, default="month")
     salary_months: Mapped[int | None] = mapped_column(Integer)
 
-    # ---------- 类型 ----------
+    # 类型
     job_type: Mapped[str] = mapped_column(String(16), nullable=False, default="full")
 
-    # ---------- JD 内容 ----------
+    # JD 内容
     description: Mapped[str | None] = mapped_column(Text)
     description_text: Mapped[str | None] = mapped_column(Text)
     highlights: Mapped[list | None] = mapped_column(JSON)
     advantage: Mapped[str | None] = mapped_column(Text)
     work_address: Mapped[str | None] = mapped_column(String(255))
 
-    # ---------- 地理位置 ----------
+    # 地理位置
     longitude: Mapped[Decimal | None] = mapped_column(DECIMAL(10, 7))
     latitude: Mapped[Decimal | None] = mapped_column(DECIMAL(10, 7))
 
-    # ---------- 来源追溯 ----------
+    # 来源追溯
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="boss")
     source_url: Mapped[str] = mapped_column(String(512), nullable=False)
     source_id: Mapped[str | None] = mapped_column(String(64))
     crawl_batch: Mapped[str | None] = mapped_column(String(32))
 
-    # ---------- 状态 ----------
+    # 状态
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="active", index=True,
     )
@@ -123,7 +112,7 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
     crawl_at: Mapped[datetime | None] = mapped_column(DateTime)
     quality_score: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 2))
 
-    # ---------- 关系 ----------
+    # 关系-
     # lazy="selectin": 预加载, 避免 async 模式下访问 company 时触发同步懒加载(MissingGreenlet)
     company: Mapped["Company"] = relationship(back_populates="jobs", lazy="selectin")  # noqa: F821
     skills: Mapped[list["JobSkill"]] = relationship(
@@ -137,9 +126,7 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
         )
 
 
-# ============================================================
 # 职位-技能关联 (M:N)
-# ============================================================
 class JobSkill(Base):
     """职位与技能的多对多关联表, 带权重/必须性。"""
 
@@ -158,15 +145,15 @@ class JobSkill(Base):
     is_must: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     weight: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 2))
 
-    # ---------- 关系 ----------
+    # 关系
     # 双向关系: JobSkill 一端连 Job, 一端连 Skill
-    # 拿技能名就走这条: job_skill.skill.name
+    # 拿技能名: job_skill.skill.name
     job: Mapped[Job] = relationship(back_populates="skills")
     skill: Mapped["Skill"] = relationship(  # noqa: F821
         back_populates="job_skills", lazy="selectin",
     )
 
-    # ---------- 派生属性(给 schema 用) ----------
+    # 派生属性(给 schema 用)
     # Pydantic v2 的 from_attributes 模式不能跨 relationship 取值,
     # 在 ORM 上加 @property 桥接, schema 用普通字段就能取到 skill 字典表的字段。
     @property

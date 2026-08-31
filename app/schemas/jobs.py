@@ -12,13 +12,9 @@ from app.schemas.page import PageParams
 
 # 职位搜索入参
 class JobSearchSchema(PageParams, ORMOut):
-    """职位列表搜索入参。
+    """职位列表搜索入参(继承 PageParams 自带分页字段)。
 
-    继承 PageParams 自动拥有分页字段(page / page_size, 带默认值和校验),
-    本类只声明业务筛选条件。
-
-    对应前端 JobList.vue 的所有筛选条件。
-    keyword 是模糊跨表搜索(职位名/技能/公司), 其余都是精确匹配。
+    keyword 是模糊跨表搜索(职位名/技能/公司), 其余精确匹配。
     """
 
     # ---------- 业务筛选条件 ----------
@@ -34,11 +30,7 @@ class JobSearchSchema(PageParams, ORMOut):
 
 # 出参: 公司信息(嵌套在 JobOut 里)
 class CompanyBrief(ORMOut):
-    """职位卡片上展示的公司简要信息。
-
-    industry_name 来自 ORM 模型上的 @property(桥接 Company.industry.name),
-    CompanyDetail 继承本类时自动拥有该字段。
-    """
+    """职位卡片展示的公司简要信息。industry_name 桥接自 ORM 的 @property。"""
 
     id: int
     name: str
@@ -51,14 +43,7 @@ class CompanyBrief(ORMOut):
 
 # 出参: 技能(嵌套在 JobOut 里)
 class JobSkillOut(ORMOut):
-    """职位要求的单个技能。
-
-    skill_name / category / is_hot 都来自 ORM 模型上的 @property
-    (桥接 JobSkill.skill 字典表), Pydantic 的 from_attributes 模式能直接取到。
-
-    proficiency / years 是简历技能的字段, 职位没有, 故不声明
-    (SkillTag 组件用 v-if 判断, 缺失就不显示)。
-    """
+    """职位要求的单个技能。skill_name 等字段桥接自 ORM 的 @property。"""
 
     skill_id: int
     is_must: int = 0
@@ -71,10 +56,7 @@ class JobSkillOut(ORMOut):
 
 # 出参: 职位详情(列表项)
 class JobOut(ORMOut):
-    """职位列表项出参。
-
-    前端 JobCard 组件渲染需要的字段。
-    """
+    """职位列表项出参(前端 JobCard 渲染用)。"""
 
     id: int
     job_code: str
@@ -98,10 +80,7 @@ class JobOut(ORMOut):
 
 
 class CompanyDetail(CompanyBrief):
-    """公司完整(详情页用)。
-
-    继承 CompanyBrief, 自动拥有 industry_code + industry_name(computed_field),
-    """
+    """公司完整信息(详情页用), 继承 Brief 自动带 industry_name。"""
     full_name: str | None = None
     stage: str | None = None
     city: str | None = None
@@ -112,10 +91,7 @@ class CompanyDetail(CompanyBrief):
 
 
 class JobDetailOut(JobOut):
-    """职位详情(重量)。
-
-    继承 JobOut, 在其基础上加详情字段。
-    """
+    """职位详情, 在 JobOut 上加 JD 正文等字段。"""
 
     # 详情页才需要的字段
     description: str | None = None  # JD HTML 正文

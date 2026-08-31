@@ -1,13 +1,7 @@
-"""
-FastAPI 应用入口
+"""FastAPI 应用入口。
 
-启动:
-    cd backend
-    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-访问:
-    - API 文档(Swagger): http://localhost:8000/docs
-    - 健康检查:          http://localhost:8000/health
+启动: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+文档: http://localhost:8000/docs
 """
 from contextlib import asynccontextmanager
 from pathlib import Path

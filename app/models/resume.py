@@ -1,14 +1,4 @@
-"""
-Resume 简历相关模型
-
-对应数据库表:
-    - resumes              简历主表
-    - resume_skills        简历-技能关联(M:N)
-    - resume_experiences   工作经历(1:N)
-    - resume_educations    教育经历(1:N)
-
-⚠️ 注意: JSON 类型用 SQLAlchemy 的 JSON, MySQL 8 自动用原生 JSON 类型。
-"""
+"""Resume 简历相关模型(resumes 主表 + skills/experiences/educations 三张关联表)。"""
 from datetime import date
 from decimal import Decimal
 
@@ -28,9 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, BigIntPk, SoftDeleteMixin, TimestampMixin
 
 
-# ============================================================
 # 简历主表
-# ============================================================
 class Resume(Base, TimestampMixin, SoftDeleteMixin):
     """简历主表, 元信息 + parsed_raw 原始解析结果。"""
 
@@ -47,18 +35,16 @@ class Resume(Base, TimestampMixin, SoftDeleteMixin):
         index=True,
     )
 
-    # ---------- 是否默认简历 ----------
-    # 每个用户只能有 1 份默认简历(用于推荐匹配/一键投递), 设置时互斥清零其他简历
+    # 是否默认简历
     is_primary: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, index=True,
     )   # 0=普通, 1=默认
 
-    # ---------- 标题 ----------
-    # 用户上传时自定义的简历标题, 比如"高级 Python 工程师版", 用于在卡片上区分多份简历
+    # 标题
     # nullable=True: 老数据/未填写时为 NULL, 前端回退显示姓名 name
     title: Mapped[str | None] = mapped_column(String(128))
 
-    # ---------- 基本信息 ----------
+    # 基本信息
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     gender: Mapped[int | None] = mapped_column(Integer)  # 0男 1女
     age: Mapped[int | None] = mapped_column(Integer)
@@ -66,17 +52,17 @@ class Resume(Base, TimestampMixin, SoftDeleteMixin):
     phone: Mapped[str | None] = mapped_column(String(20))
     email: Mapped[str | None] = mapped_column(String(128))
 
-    # ---------- 简历来源 ----------
+    # 简历来源
     source_type: Mapped[str] = mapped_column(String(16), nullable=False, default="pdf")
     file_url: Mapped[str | None] = mapped_column(String(512))
 
-    # ---------- 解析状态机 ----------
+    # 解析状态机
     parse_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="pending", index=True,
     )
     parse_error: Mapped[str | None] = mapped_column(String(512))
 
-    # ---------- 求职意向 ----------
+    # 求职意向
     work_years: Mapped[int | None] = mapped_column(Integer)
     education: Mapped[str | None] = mapped_column(String(16))
     expect_salary_min: Mapped[int | None] = mapped_column(Integer)
@@ -84,13 +70,13 @@ class Resume(Base, TimestampMixin, SoftDeleteMixin):
     expect_city: Mapped[str | None] = mapped_column(String(64))
     expect_job: Mapped[str | None] = mapped_column(String(128))
 
-    # ---------- 评分 ----------
+    # 评分
     overall_score: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
 
-    # ---------- 原始解析结果 ----------
+    # 原始解析结果
     parsed_raw: Mapped[dict | None] = mapped_column(JSON)
 
-    # ---------- 关系 ----------
+    # 关系
     user: Mapped["User"] = relationship(back_populates="resumes")  # noqa: F821
     skills: Mapped[list["ResumeSkill"]] = relationship(
         back_populates="resume", lazy="selectin", cascade="all, delete-orphan",
@@ -106,9 +92,7 @@ class Resume(Base, TimestampMixin, SoftDeleteMixin):
         return f"<Resume(id={self.id}, name={self.name!r}, status={self.parse_status!r})>"
 
 
-# ============================================================
 # 简历-技能关联 (M:N)
-# ============================================================
 class ResumeSkill(Base):
     """简历与技能的多对多关联表, 带熟练度/年限属性。"""
 
@@ -124,8 +108,7 @@ class ResumeSkill(Base):
     skill_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("skills.id"), nullable=False, index=True,
     )
-    # 熟练度(1-5): AI 一般解析不到(简历里不会写"L4"), 设为可空。
-    # 没有 None 时前端 SkillTag 的 v-if 不显示等级, 避免显示假的默认值。
+    # 熟练度(1-5): 设为可空。
     proficiency: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     years: Mapped[Decimal | None] = mapped_column(DECIMAL(4, 1))
 
@@ -138,9 +121,7 @@ class ResumeSkill(Base):
         return f"<ResumeSkill(resume_id={self.resume_id}, skill_id={self.skill_id}, prof={self.proficiency})>"
 
 
-# ============================================================
 # 工作经历 (1:N)
-# ============================================================
 class ResumeExperience(Base):
     """简历工作经历明细。"""
 
@@ -160,9 +141,7 @@ class ResumeExperience(Base):
     resume: Mapped[Resume] = relationship(back_populates="experiences")
 
 
-# ============================================================
 # 教育经历 (1:N)
-# ============================================================
 class ResumeEducation(Base):
     """简历教育经历明细。"""
 
