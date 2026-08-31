@@ -1,4 +1,4 @@
-from sqlalchemy import select, func, distinct, desc, case
+from sqlalchemy import select, func, distinct, desc, case, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Job, Company, Skill, Industry, JobSkill
@@ -260,3 +260,60 @@ async def count_source_distribution(db: AsyncSession):
     for source, cnt in data:
         sources.append({"name": source_map[source], "value": cnt})
     return sources
+
+
+async def count_emerging_skills(db: AsyncSession, recent_months: int = 3,
+                                min_early: int = 5, top: int = 10) -> dict:
+    """新兴技能: 近N个月 vs 前N个月的需求增速榜。
+
+    growth = 近期需求量 / 早期需求量
+    过滤: 早期 < min_early 次的扔掉(小样本虚高), 增速 < 2 倍不上榜
+    """
+    recent_since = func.date_format(
+        func.date_sub(func.now(), text(f"INTERVAL {recent_months} MONTH")), "%Y-%m-01")
+    early_since = func.date_format(
+        func.date_sub(func.now(), text(f"INTERVAL {recent_months * 2} MONTH")), "%Y-%m-01")
+
+    stmt = (
+        select(
+            Skill.name,
+            Skill.category,
+            func.sum(case((Job.publish_at >= recent_since, 1), else_=0)).label("recent_cnt"),
+            func.sum(case((Job.publish_at >= early_since, 1), else_=0)).label("window_cnt"),
+            func.count(Job.id).label("total_cnt"),
+        )
+        .select_from(JobSkill)
+        .join(Job, Job.id == JobSkill.job_id)
+        .join(Skill, Skill.id == JobSkill.skill_id)
+        .where(
+            Job.publish_at.isnot(None),
+            Job.status == "active",
+            Job.is_deleted == 0,
+            Job.publish_at >= early_since,
+        )
+        .group_by(Skill.id, Skill.name, Skill.category)
+    )
+    rows = (await db.execute(stmt)).all()
+
+    results = []
+    for name, category, recent_cnt, window_cnt, total_cnt in rows:
+        early_cnt = window_cnt - recent_cnt
+        if early_cnt < min_early:
+            continue
+        growth = recent_cnt / early_cnt
+        if growth < 2.0:
+            continue
+        results.append({
+            "name": name,
+            "category": category,
+            "recent_count": int(recent_cnt),
+            "early_count": int(early_cnt),
+            "growth": round(growth, 2),
+            "total_count": int(total_cnt),
+        })
+
+    results.sort(key=lambda x: x["growth"], reverse=True)
+    return {
+        "window": f"近{recent_months}个月 vs 之前{recent_months}个月",
+        "skills": results[:top],
+    }

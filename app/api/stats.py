@@ -7,9 +7,15 @@ from app.core.database import get_db
 from app.schemas import Result, OverviewOut
 from app.services.stats_service import count_overview, count_salary_distribution, count_city_distribution, \
     count_skills_hot, count_industry_distribution, count_source_distribution, count_education_distribution, \
-    count_job_trend, count_experience_salary, count_skill_trend
+    count_job_trend, count_experience_salary, count_skill_trend, count_emerging_skills
 
 router = APIRouter(prefix="/stats", tags=["数据统计"])
+
+@router.get("/emerging", response_model=Result[dict], summary="新兴技能发现(增速榜)")
+async def get_emerging_skills(db: AsyncSession = Depends(get_db)):
+    """近3个月 vs 前3个月, 需求翻倍以上的技能榜。"""
+    out = await count_emerging_skills(db)
+    return Result.success(data=out)
 
 @router.get("/overview", response_model=Result[OverviewOut], summary="五个词条统计")
 async def get_overview(db: AsyncSession = Depends(get_db)):
