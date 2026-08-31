@@ -159,6 +159,49 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 图表区 5:新兴技能发现 -->
+    <el-row :gutter="20">
+      <el-col :span="12">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>🚀 新兴技能发现(字典外新词)</span>
+              <el-tag size="small" type="warning" effect="plain">候选待转正</el-tag>
+            </div>
+          </template>
+          <div v-if="!emerging.candidates.length" class="emerging-empty">
+            暂无候选新词——爬虫/简历中出现字典未收录的技能后会自动积累
+          </div>
+          <div v-else class="emerging-list">
+            <div v-for="c in emerging.candidates" :key="c.name" class="emerging-item">
+              <span class="emerging-name">{{ c.name }}</span>
+              <span class="emerging-meta">
+                出现 <strong>{{ c.hit_count }}</strong> 次 · {{ c.first_seen }} ~ {{ c.last_seen }}
+              </span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>📈 需求翻红榜({{ emerging.window }})</span>
+              <el-tag size="small" type="info" effect="plain">增速 ≥ 2 倍</el-tag>
+            </div>
+          </template>
+          <div v-if="!emerging.trending.length" class="emerging-empty">暂无增速达标技能</div>
+          <div v-else class="emerging-list">
+            <div v-for="t in emerging.trending" :key="t.name" class="emerging-item">
+              <span class="emerging-name">{{ t.name }}</span>
+              <el-tag size="small" type="danger" effect="plain">×{{ t.growth }}</el-tag>
+              <span class="emerging-meta">{{ t.early_count }} → {{ t.recent_count }} 次</span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -174,6 +217,9 @@ const topStats = reactive([
   { label: '覆盖城市', value: '0', icon: 'Location', bg: '#e6a23c' },
   { label: '技能字典', value: '0', icon: 'Cpu', bg: '#f56c6c' }
 ])
+
+// 新兴技能发现(字典外候选 + 字典内增速)
+const emerging = ref({ trending: [], candidates: [], window: '' })
 
 // chart DOM 引用
 const salaryChartRef = ref(null)
@@ -459,6 +505,10 @@ const loadAllCharts = async () => {
   try { renderEduChart() } catch (e) { console.error('学历图失败:', e) }
   try { renderExpRadarChart() } catch (e) { console.error('经验图失败:', e) }
   try { renderSourceChart() } catch (e) { console.error('来源图失败:', e) }
+  // 新兴技能发现(两路榜单)
+  try {
+    emerging.value = await request.get('/stats/emerging')
+  } catch (e) { console.error('新兴技能加载失败:', e) }
 }
 
 onMounted(() => {
@@ -542,6 +592,42 @@ onBeforeUnmount(() => {
 .trend-controls {
   display: flex;
   gap: 8px;
+}
+
+.emerging-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.emerging-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px dashed #ebeef5;
+  font-size: 13px;
+}
+
+.emerging-item:last-child {
+  border-bottom: none;
+}
+
+.emerging-name {
+  font-weight: 500;
+  color: #303133;
+  min-width: 110px;
+}
+
+.emerging-meta {
+  color: #909399;
+  font-size: 12px;
+}
+
+.emerging-empty {
+  color: #909399;
+  font-size: 13px;
+  padding: 24px 0;
+  text-align: center;
 }
 
 .chart-canvas {

@@ -11,11 +11,21 @@ from app.services.stats_service import count_overview, count_salary_distribution
 
 router = APIRouter(prefix="/stats", tags=["数据统计"])
 
-@router.get("/emerging", response_model=Result[dict], summary="新兴技能发现(增速榜)")
+@router.get("/emerging", response_model=Result[dict], summary="新兴技能发现(增速榜+新词榜)")
 async def get_emerging_skills(db: AsyncSession = Depends(get_db)):
-    """近3个月 vs 前3个月, 需求翻倍以上的技能榜。"""
-    out = await count_emerging_skills(db)
-    return Result.success(data=out)
+    """两路合并:
+    trending   字典内技能的需求增速榜(近3月 vs 前3月, 翻倍以上)
+    candidates 字典外新词榜(emerging_skills 候选表, 按出现次数)
+    """
+    from app.services.stats_service import count_emerging_candidates
+
+    trending = await count_emerging_skills(db)
+    candidates = await count_emerging_candidates(db)
+    return Result.success(data={
+        "trending": trending["skills"],
+        "window": trending["window"],
+        "candidates": candidates,
+    })
 
 @router.get("/overview", response_model=Result[OverviewOut], summary="五个词条统计")
 async def get_overview(db: AsyncSession = Depends(get_db)):

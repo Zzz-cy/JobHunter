@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.exceptions import ParamError
 from app.models import Resume, ResumeExperience, ResumeEducation, ResumeSkill, Skill
+from app.utils.emergingUtil import record_unknown_skills
 from app.utils.codeUtil import generate_code
 
 # 允许的文件类型(MIME 类型 -> 简历来源类型)
@@ -246,12 +247,18 @@ async def save_parsed_result(db: AsyncSession, resume_id: int, parsed: dict) -> 
     # ---------- 4. 存技能(查字典表归一) ----------
     # 按 skill_id 去重, LLM 偶尔会重复返回, 不去重会撞 uk_resume_skill
     seen_skill_ids: set[int] = set()
+    unknown_skills: list[str] = []
     for skill_name in parsed.get("skills", []):
         skill = await find_skill_by_name(db, skill_name)
         if skill and skill.id not in seen_skill_ids:
             seen_skill_ids.add(skill.id)
             db.add(ResumeSkill(resume_id=resume_id, skill_id=skill.id))
-        # 字典表没有的技能: 暂时跳过(以后扩充字典)
+        elif not skill and skill_name.strip() and skill_name not in unknown_skills:
+            unknown_skills.append(skill_name)   # 字典外的词, 收集起来落候选表
+
+    # 未命中字典 → emerging_skills 候选(新技能发现的数据来源)
+    if unknown_skills:
+        await record_unknown_skills(db, unknown_skills)
 
 
 # 完整解析流程: 调 LLM + 拆 JSON + 存 4 张表 + 更新状态机

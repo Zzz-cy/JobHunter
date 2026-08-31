@@ -3,7 +3,7 @@ from app.models.base import Base
 from app.models.behavior import Application, ChatHistory, Recommendation
 from app.models.company import Company
 from app.models.crawl import CrawlSource, CrawlTask
-from app.models.dict import Industry, Skill
+from app.models.dict import EmergingSkill, Industry, Skill
 from app.models.job import Job, JobSkill
 from app.models.resume import (
     Resume,
@@ -17,6 +17,7 @@ __all__ = [
     "Base",
     # ---- 字典层 ----
     "Skill",
+    "EmergingSkill",
     "Industry",
     # ---- 用户 & 简历 ----
     "User",

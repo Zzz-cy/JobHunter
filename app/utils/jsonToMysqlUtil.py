@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Company, Job, JobSkill, Skill
 from app.utils.codeUtil import generate_code
+from app.utils.emergingUtil import record_unknown_skills
 
 
 # 行业归一化: 爬虫的中文细字符串 → industries 表大类 code
@@ -149,7 +150,8 @@ async def _link_skills(
     job_id: int,
     raw_skills: list,
 ):
-    """raw_skills 按 name 精确匹配 skills 表, 命中才写 job_skills, 没命中跳过。"""
+    """raw_skills 按 name 精确匹配 skills 表, 命中写 job_skills,
+    未命中记入 emerging_skills 候选表(不再丢弃, 供新兴技能发现)。"""
     if not raw_skills:
         return
 
@@ -163,6 +165,12 @@ async def _link_skills(
             job_id=job_id,
             skill_id=skill.id,
         ))
+
+    # 字典外的词 → 候选表
+    hit_names = {s.name for s in skills}
+    unknown = [n for n in raw_skills if n.strip() and n.strip() not in hit_names]
+    if unknown:
+        await record_unknown_skills(db, unknown)
 
 
 async def json_to_mysql(data: dict, db: AsyncSession):

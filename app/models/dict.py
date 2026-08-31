@@ -2,10 +2,13 @@
 字典表模型
 
 对应数据库表:
-    - skills       技能字典(与 Neo4j Skill 节点对应)
-    - industries   行业/城市层级字典
+    - skills           技能字典(与 Neo4j Skill 节点对应)
+    - emerging_skills  新兴技能候选(字典外的词)
+    - industries       行业/城市层级字典
 """
-from sqlalchemy import Integer, String
+from datetime import datetime
+
+from sqlalchemy import DateTime, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, BigIntPk, TimestampMixin
@@ -38,6 +41,27 @@ class Skill(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<Skill(id={self.id}, name={self.name!r}, category={self.category!r})>"
+
+
+# 新兴技能候选(字典外的词, 积累证据后可转正进 skills)
+class EmergingSkill(Base):
+    """LLM 抽出但 skills 字典未收录的技能词。
+
+    归一未命中时记一笔, 不再直接丢弃——新技能由此可被发现。
+    hit_count 是证据强度, status=candidate 待审核 / adopted 已转正。
+    """
+
+    __tablename__ = "emerging_skills"
+
+    id: Mapped[int] = BigIntPk()
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    first_seen: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    last_seen: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="candidate", index=True)
+
+    def __repr__(self) -> str:
+        return f"<EmergingSkill(name={self.name!r}, hits={self.hit_count}, status={self.status!r})>"
 
 
 # 行业字典

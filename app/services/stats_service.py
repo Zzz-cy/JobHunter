@@ -317,3 +317,33 @@ async def count_emerging_skills(db: AsyncSession, recent_months: int = 3,
         "window": f"近{recent_months}个月 vs 之前{recent_months}个月",
         "skills": results[:top],
     }
+
+
+async def count_emerging_candidates(db: AsyncSession, min_hits: int = 3, top: int = 10) -> list[dict]:
+    """字典外新词榜: emerging_skills 候选表按证据强度排序。"""
+    from app.models import EmergingSkill
+
+    stmt = (
+        select(
+            EmergingSkill.name,
+            EmergingSkill.hit_count,
+            EmergingSkill.first_seen,
+            EmergingSkill.last_seen,
+        )
+        .where(
+            EmergingSkill.status == "candidate",
+            EmergingSkill.hit_count >= min_hits,   # 出现太少的是噪声
+        )
+        .order_by(EmergingSkill.hit_count.desc())
+        .limit(top)
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "name": name,
+            "hit_count": hit_count,
+            "first_seen": first_seen.strftime("%Y-%m-%d") if first_seen else None,
+            "last_seen": last_seen.strftime("%Y-%m-%d") if last_seen else None,
+        }
+        for name, hit_count, first_seen, last_seen in rows
+    ]
