@@ -242,6 +242,24 @@ CREATE TABLE IF NOT EXISTS `job_skills` (
     KEY `idx_js_skill` (`skill_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='职位-技能关联';
 
+-- 新岗位发现与定义(飙升技能+近期JD 两步LLM产物, 人工可改)
+CREATE TABLE IF NOT EXISTS `job_definitions` (
+    `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name`            VARCHAR(128) NOT NULL COMMENT '新岗位名称',
+    `definition`      JSON DEFAULT NULL COMMENT '画像四要素{core_duties,must_skills,plus_skills,industries}',
+    `evidence_skills` JSON DEFAULT NULL COMMENT '发现依据(飙升技能名列表)',
+    `job_count`       INT NOT NULL DEFAULT 0 COMMENT '证据职位数(ES命中JD条数)',
+    `source`          VARCHAR(16) NOT NULL DEFAULT 'ai' COMMENT 'ai=LLM生成 manual=人工修改过(重新发现不覆盖)',
+    `status`          VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT 'pending/generating/done/failed',
+    `error_msg`       VARCHAR(512) DEFAULT NULL,
+    `version`         INT NOT NULL DEFAULT 1 COMMENT '定义版本, 每次重新发现+1',
+    `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_jobdef_name` (`name`),
+    KEY `idx_jobdef_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='新岗位发现与定义';
+
 -- ---------- 4. 用户行为 & 业务 ----------
 -- 用户-职位关系(收藏/外站投递反馈)
 -- 本平台不代投，仅提供 jobs.source_url 跳转；applied 之后状态依赖用户手动反馈

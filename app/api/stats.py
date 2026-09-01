@@ -1,10 +1,11 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.schemas import Result, OverviewOut
+from app.utils.jwtUtil import require_admin
 from app.services.stats_service import count_overview, count_salary_distribution, count_city_distribution, \
     count_skills_hot, count_industry_distribution, count_source_distribution, count_education_distribution, \
     count_job_trend, count_experience_salary, count_skill_trend, count_emerging_skills
@@ -26,6 +27,25 @@ async def get_emerging_skills(db: AsyncSession = Depends(get_db)):
         "window": trending["window"],
         "candidates": candidates,
     })
+
+
+@router.post("/emerging/adopt", response_model=Result[dict], summary="转正新兴技能(管理员)")
+async def adopt_emerging(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """候选技能转正: 进字典 + 全文回溯补历史职位/简历的技能关联。
+
+    body: {"names": ["MCP协议", "AIGC工程化"]}
+    """
+    from app.services.emerging_service import adopt_emerging_skills
+
+    names = payload.get("names") or []
+    if not names:
+        raise HTTPException(status_code=400, detail="names 不能为空")
+    out = await adopt_emerging_skills(db, names)
+    return Result.success(data=out, message=f"已转正 {len(out['results'])} 个技能")
 
 @router.get("/overview", response_model=Result[OverviewOut], summary="五个词条统计")
 async def get_overview(db: AsyncSession = Depends(get_db)):

@@ -7,7 +7,7 @@
           找到你的<span class="highlight">理想工作</span>
         </h1>
         <p class="hero-subtitle">
-          聚合 Boss / 猎聘 / 官网直招 · AI 智能匹配 · 知识图谱推荐
+          聚合多平台职位 · AI 智能匹配 · 数据驱动求职
         </p>
 
         <div class="search-box">
@@ -127,9 +127,9 @@ const features = [
     color: '#409eff'
   },
   {
-    icon: 'Share',
-    title: '知识图谱',
-    desc: 'Neo4j 构建技能图谱,挖掘技能关联,拓展你可能感兴趣的岗位',
+    icon: 'TrendCharts',
+    title: '新兴技能发现',
+    desc: '时序增速算法识别需求飙升技能,新技能转正自动回溯补全关联',
     color: '#67c23a'
   },
   {

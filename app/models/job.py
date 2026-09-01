@@ -126,6 +126,32 @@ class Job(Base, TimestampMixin, SoftDeleteMixin):
         )
 
 
+# 新岗位发现与定义
+class JobDefinition(Base, TimestampMixin):
+    """新岗位画像。
+
+    LLM 从飙升技能+近期 JD 里发现并定义, 人工编辑过的标 source=manual,重新发现时跳过不覆盖。
+    """
+
+    __tablename__ = "job_definitions"
+
+    id: Mapped[int] = BigIntPk()
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    # 画像四要素: core_duties/must_skills/plus_skills/industries
+    definition: Mapped[dict | None] = mapped_column(JSON)
+    evidence_skills: Mapped[list | None] = mapped_column(JSON)
+    job_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="ai")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending", index=True,
+    )
+    error_msg: Mapped[str | None] = mapped_column(String(512))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    def __repr__(self) -> str:
+        return f"<JobDefinition(id={self.id}, name={self.name!r}, source={self.source!r})>"
+
+
 # 职位-技能关联 (M:N)
 class JobSkill(Base):
     """职位与技能的多对多关联表, 带权重/必须性。"""

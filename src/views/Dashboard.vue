@@ -27,61 +27,80 @@
       </el-col>
     </el-row>
 
-    <!-- 图表区 1:薪资 + 城市 -->
-    <el-row :gutter="20">
-      <el-col :span="12">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="chart-title">
-              <span>薪资分布</span>
-              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
-            </div>
-          </template>
-          <div ref="salaryChartRef" class="chart-canvas"></div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="chart-title">
-              <span>城市职位分布 TOP 10</span>
-              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
-            </div>
-          </template>
-          <div ref="cityChartRef" class="chart-canvas"></div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <el-tabs v-model="activeTab" class="dash-tabs" @tab-change="handleTabChange">
 
-    <!-- 图表区 2:技能 + 行业 -->
-    <el-row :gutter="20">
-      <el-col :span="12">
+      <!-- Tab1 新兴技能发现(默认): 字典外候选词, 管理员可勾选转正 -->
+      <el-tab-pane label="新兴技能发现" name="emerging">
+        <el-row :gutter="20">
+<el-col :span="24">
         <el-card class="chart-card" shadow="never">
           <template #header>
             <div class="chart-title">
-              <span>热门技能 TOP 15</span>
-              <el-tag size="small" type="info" effect="plain">按职位需求数</el-tag>
+              <span>新兴技能发现</span>
+              <el-tag size="small" type="warning" effect="plain">候选待转正</el-tag>
             </div>
           </template>
-          <div ref="skillChartRef" class="chart-canvas"></div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="chart-title">
-              <span>行业职位占比</span>
-              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
+          <div v-if="!emerging.candidates.length" class="emerging-empty">
+            暂无候选新词——爬虫/简历中出现字典未收录的技能后会自动积累
+          </div>
+          <template v-else>
+            <div v-if="userStore.isAdmin" class="emerging-actions">
+              <el-button
+                type="primary" size="small"
+                :disabled="!adoptSelection.length" :loading="adopting"
+                @click="handleAdopt"
+              >
+                转正所选({{ adoptSelection.length }})
+              </el-button>
+              <span class="emerging-tip">转正 = 进技能字典 + 全文回溯补历史职位关联</span>
+            </div>
+            <div class="emerging-list">
+              <div v-for="c in emerging.candidates" :key="c.name" class="emerging-item">
+                <el-checkbox
+                  v-if="userStore.isAdmin"
+                  v-model="adoptCheckboxes[c.name]"
+                  @change="syncAdoptSelection"
+                />
+                <span class="emerging-name">{{ c.name }}</span>
+                <span class="emerging-meta">
+                  出现 <strong>{{ c.hit_count }}</strong> 次 · {{ c.first_seen }} ~ {{ c.last_seen }}
+                </span>
+              </div>
             </div>
           </template>
-          <div ref="industryChartRef" class="chart-canvas"></div>
         </el-card>
       </el-col>
-    </el-row>
+        </el-row>
+      </el-tab-pane>
 
-    <!-- 图表区 3:趋势 + 学历 -->
-    <el-row :gutter="20">
-      <el-col :span="14">
+      <!-- Tab2 需求飙升榜: 字典内技能增速(时间窗口在标签上) -->
+      <el-tab-pane :label="'需求飙升榜(' + (emerging.window || '') + ')'" name="surge">
+        <el-row :gutter="20">
+<el-col :span="24">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>需求飙升榜</span>
+              <el-tag size="small" type="info" effect="plain">增速 ≥ 2 倍</el-tag>
+            </div>
+          </template>
+          <div v-if="!emerging.trending.length" class="emerging-empty">暂无增速达标技能</div>
+          <div v-else class="emerging-list">
+            <div v-for="t in emerging.trending" :key="t.name" class="emerging-item">
+              <span class="emerging-name">{{ t.name }}</span>
+              <el-tag size="small" type="danger" effect="plain">×{{ t.growth }}</el-tag>
+              <span class="emerging-meta">{{ t.early_count }} → {{ t.recent_count }} 次</span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+        </el-row>
+      </el-tab-pane>
+
+      <!-- Tab3 招聘需求趋势 -->
+      <el-tab-pane label="招聘需求趋势" name="trend" lazy>
+        <el-row :gutter="20">
+<el-col :span="24">
         <el-card class="chart-card" shadow="never">
           <template #header>
             <div class="chart-title">
@@ -92,19 +111,12 @@
           <div ref="trendChartRef" class="chart-canvas"></div>
         </el-card>
       </el-col>
-      <el-col :span="10">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="chart-title">
-              <span>学历要求分布</span>
-            </div>
-          </template>
-          <div ref="eduChartRef" class="chart-canvas"></div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </el-row>
+      </el-tab-pane>
 
-    <!-- 图表区 3.5:技能需求演化(时序分析) -->
+      <!-- Tab4 技能需求演化 -->
+      <el-tab-pane label="技能需求演化" name="evolution" lazy>
+<!-- 图表区 3.5:技能需求演化(时序分析) -->
     <el-row :gutter="20">
       <el-col :span="24">
         <el-card class="chart-card" shadow="never">
@@ -135,10 +147,70 @@
         </el-card>
       </el-col>
     </el-row>
+      </el-tab-pane>
 
-    <!-- 图表区 4:经验要求雷达图 -->
-    <el-row :gutter="20">
-      <el-col :span="12">
+      <!-- Tab5 更多图表 -->
+      <el-tab-pane label="更多图表" name="more" lazy>
+        <el-row :gutter="20">
+<el-col :span="12">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>薪资分布</span>
+              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
+            </div>
+          </template>
+          <div ref="salaryChartRef" class="chart-canvas"></div>
+        </el-card>
+      </el-col>
+<el-col :span="12">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>城市职位分布 TOP 10</span>
+              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
+            </div>
+          </template>
+          <div ref="cityChartRef" class="chart-canvas"></div>
+        </el-card>
+      </el-col>
+        </el-row>
+        <el-row :gutter="20">
+<el-col :span="12">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>热门技能 TOP 15</span>
+              <el-tag size="small" type="info" effect="plain">按职位需求数</el-tag>
+            </div>
+          </template>
+          <div ref="skillChartRef" class="chart-canvas"></div>
+        </el-card>
+      </el-col>
+<el-col :span="12">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>行业职位占比</span>
+              <el-tag size="small" type="info" effect="plain">按职位数</el-tag>
+            </div>
+          </template>
+          <div ref="industryChartRef" class="chart-canvas"></div>
+        </el-card>
+      </el-col>
+        </el-row>
+        <el-row :gutter="20">
+<el-col :span="12">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="chart-title">
+              <span>学历要求分布</span>
+            </div>
+          </template>
+          <div ref="eduChartRef" class="chart-canvas"></div>
+        </el-card>
+      </el-col>
+<el-col :span="12">
         <el-card class="chart-card" shadow="never">
           <template #header>
             <div class="chart-title">
@@ -148,7 +220,9 @@
           <div ref="expRadarChartRef" class="chart-canvas"></div>
         </el-card>
       </el-col>
-      <el-col :span="12">
+        </el-row>
+        <el-row :gutter="20">
+<el-col :span="24">
         <el-card class="chart-card" shadow="never">
           <template #header>
             <div class="chart-title">
@@ -158,57 +232,18 @@
           <div ref="sourceChartRef" class="chart-canvas"></div>
         </el-card>
       </el-col>
-    </el-row>
-
-    <!-- 图表区 5:新兴技能发现 -->
-    <el-row :gutter="20">
-      <el-col :span="12">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="chart-title">
-              <span>🚀 新兴技能发现(字典外新词)</span>
-              <el-tag size="small" type="warning" effect="plain">候选待转正</el-tag>
-            </div>
-          </template>
-          <div v-if="!emerging.candidates.length" class="emerging-empty">
-            暂无候选新词——爬虫/简历中出现字典未收录的技能后会自动积累
-          </div>
-          <div v-else class="emerging-list">
-            <div v-for="c in emerging.candidates" :key="c.name" class="emerging-item">
-              <span class="emerging-name">{{ c.name }}</span>
-              <span class="emerging-meta">
-                出现 <strong>{{ c.hit_count }}</strong> 次 · {{ c.first_seen }} ~ {{ c.last_seen }}
-              </span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="chart-title">
-              <span>📈 需求翻红榜({{ emerging.window }})</span>
-              <el-tag size="small" type="info" effect="plain">增速 ≥ 2 倍</el-tag>
-            </div>
-          </template>
-          <div v-if="!emerging.trending.length" class="emerging-empty">暂无增速达标技能</div>
-          <div v-else class="emerging-list">
-            <div v-for="t in emerging.trending" :key="t.name" class="emerging-item">
-              <span class="emerging-name">{{ t.name }}</span>
-              <el-tag size="small" type="danger" effect="plain">×{{ t.growth }}</el-tag>
-              <span class="emerging-meta">{{ t.early_count }} → {{ t.recent_count }} 次</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </el-row>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
 // 顶部统计
 const topStats = reactive([
@@ -220,6 +255,30 @@ const topStats = reactive([
 
 // 新兴技能发现(字典外候选 + 字典内增速)
 const emerging = ref({ trending: [], candidates: [], window: '' })
+
+// 图表 tab: 默认展示新兴技能发现, 其余按需渲染
+const activeTab = ref('emerging')
+
+// 候选转正(管理员)
+const userStore = useUserStore()
+const adoptCheckboxes = ref({})
+const adoptSelection = ref([])
+const adopting = ref(false)
+const syncAdoptSelection = () => {
+  adoptSelection.value = Object.entries(adoptCheckboxes.value)
+    .filter(([, v]) => v).map(([k]) => k)
+}
+const handleAdopt = async () => {
+  adopting.value = true
+  try {
+    const res = await request.post('/stats/emerging/adopt',
+      { names: adoptSelection.value })
+    ElMessage.success(res.message || '转正完成')
+    adoptCheckboxes.value = {}
+    adoptSelection.value = []
+    emerging.value = await request.get('/stats/emerging')  // 刷新两榜
+  } catch (e) { /* 拦截器已提示 */ } finally { adopting.value = false }
+}
 
 // chart DOM 引用
 const salaryChartRef = ref(null)
@@ -487,29 +546,43 @@ const loadAllCharts = async () => {
     console.error('统计数据加载失败:', e)
   }
 
-  // 图表渲染单独 try-catch, 避免1个失败影响全部
-  try { await renderSalaryChart() } catch (e) { console.error('薪资图失败:', e) }
-  try { renderCityChart() } catch (e) { console.error('城市图失败:', e) }
-  try { renderSkillChart() } catch (e) { console.error('技能图失败:', e) }
-  try { renderIndustryChart() } catch (e) { console.error('行业图失败:', e) }
-  try { renderTrendChart() } catch (e) { console.error('趋势图失败:', e) }
-  // 先拿热门技能做选项, 默认勾 Top5
-  try {
-    const hot = await request.get('/stats/skills/hot')
-    skillOptions.value = hot.name || []
-    if (!selectedSkills.value.length) {
-      selectedSkills.value = skillOptions.value.slice(0, 5)
-    }
-    await renderSkillTrendChart()
-  } catch (e) { console.error('技能趋势图失败:', e) }
-  try { renderEduChart() } catch (e) { console.error('学历图失败:', e) }
-  try { renderExpRadarChart() } catch (e) { console.error('经验图失败:', e) }
-  try { renderSourceChart() } catch (e) { console.error('来源图失败:', e) }
-  // 新兴技能发现(两路榜单)
+  // 新兴技能发现(默认 tab 的数据)
   try {
     emerging.value = await request.get('/stats/emerging')
   } catch (e) { console.error('新兴技能加载失败:', e) }
 }
+
+// ---------- Tab 按需渲染 ----------
+// echarts 在隐藏容器里初始化宽高为 0, 每个 tab 首次激活时才渲染
+const renderedTabs = new Set()
+const renderTab = async (name) => {
+  if (renderedTabs.has(name)) { resizeAll(); return }
+  renderedTabs.add(name)
+  const safe = async (fn, label) => { try { await fn() } catch (e) { console.error(label, e) } }
+  if (name === 'trend') {
+    await safe(renderTrendChart, '趋势图失败:')
+  } else if (name === 'evolution') {
+    if (!skillOptions.value.length) {
+      try {
+        const hot = await request.get('/stats/skills/hot')
+        skillOptions.value = hot.name || []
+        if (!selectedSkills.value.length) {
+          selectedSkills.value = skillOptions.value.slice(0, 5)
+        }
+      } catch (e) { console.error('技能选项加载失败:', e) }
+    }
+    await safe(renderSkillTrendChart, '技能趋势图失败:')
+  } else if (name === 'more') {
+    await safe(renderSalaryChart, '薪资图失败:')
+    await safe(renderCityChart, '城市图失败:')
+    await safe(renderSkillChart, '技能图失败:')
+    await safe(renderIndustryChart, '行业图失败:')
+    await safe(renderEduChart, '学历图失败:')
+    await safe(renderExpRadarChart, '经验图失败:')
+    await safe(renderSourceChart, '来源图失败:')
+  }
+}
+const handleTabChange = (name) => nextTick(() => renderTab(name))
 
 onMounted(() => {
   loadAllCharts()
@@ -592,6 +665,18 @@ onBeforeUnmount(() => {
 .trend-controls {
   display: flex;
   gap: 8px;
+}
+
+.emerging-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.emerging-tip {
+  font-size: 12px;
+  color: #909399;
 }
 
 .emerging-list {

@@ -71,6 +71,13 @@ const routes = [
         meta: { title: '数据分析', requiresAuth: false }
       },
       {
+        // 新岗位发现与定义: 飙升技能+近期JD 两步LLM, 画像支持人工修正
+        path: 'job-definitions',
+        name: 'JobDefinitions',
+        component: () => import('@/views/JobDefinitions.vue'),
+        meta: { title: '岗位发现', requiresAuth: false }
+      },
+      {
         path: 'knowledge-graph',
         name: 'KnowledgeGraph',
         component: () => import('@/views/KnowledgeGraph.vue'),

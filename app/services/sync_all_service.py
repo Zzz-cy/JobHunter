@@ -83,7 +83,24 @@ async def _step_mysql() -> str:
         _sync_state["_fresh_import"] = (before == 0)
 
         await json_to_mysql(data, db)
-    return f"导入 {len(data.get('jobs', []))} 条(已存在的自动跳过)"
+
+        # 热门技能动态重算: 按 active 职位关联数 Top15 置 is_hot
+        # (不再依赖种子手工标注, 前端 SkillTag 火焰图标随真实需求刷新)
+        await db.execute(text("UPDATE skills SET is_hot = 0"))
+        await db.execute(text("""
+            UPDATE skills s SET s.is_hot = 1 WHERE s.id IN (
+                SELECT skill_id FROM (
+                    SELECT js.skill_id AS skill_id
+                    FROM job_skills js
+                    JOIN jobs j ON j.id = js.job_id
+                    WHERE j.status = 'active' AND j.is_deleted = 0
+                    GROUP BY js.skill_id
+                    ORDER BY COUNT(*) DESC
+                    LIMIT 15
+                ) top
+            )
+        """))
+    return f"导入 {len(data.get('jobs', []))} 条(已存在的自动跳过), 热门技能已重算"
 
 
 async def _step_es() -> str:

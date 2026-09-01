@@ -4,7 +4,7 @@ from app.models.behavior import Application, ChatHistory, Recommendation
 from app.models.company import Company
 from app.models.crawl import CrawlSource, CrawlTask
 from app.models.dict import EmergingSkill, Industry, Skill
-from app.models.job import Job, JobSkill
+from app.models.job import Job, JobDefinition, JobSkill
 from app.models.resume import (
     Resume,
     ResumeEducation,
@@ -29,6 +29,7 @@ __all__ = [
     "Company",
     "Job",
     "JobSkill",
+    "JobDefinition",
     # ---- 行为 & 业务 ----
     "Application",
     "Recommendation",

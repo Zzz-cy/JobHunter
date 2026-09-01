@@ -8,10 +8,10 @@
       </div>
 
       <!-- 导航菜单 -->
+      <!-- 不关 ellipsis: 菜单项过多时自动折叠进「···」, 防止挤压右侧用户区 -->
       <el-menu
         :default-active="activeMenu"
         mode="horizontal"
-        :ellipsis="false"
         router
         class="nav-menu"
       >
@@ -34,6 +34,10 @@
         <el-menu-item index="/dashboard">
           <el-icon><DataAnalysis /></el-icon>
           <span>数据分析</span>
+        </el-menu-item>
+        <el-menu-item index="/job-definitions">
+          <el-icon><Compass /></el-icon>
+          <span>岗位发现</span>
         </el-menu-item>
         <el-menu-item index="/recommend">
           <el-icon><MagicStick /></el-icon>
@@ -144,24 +148,38 @@ const handleCommand = async (cmd) => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  margin-right: 48px;
+  margin-right: 24px;
+  flex-shrink: 0;
 }
 
 .logo-text {
   font-size: 20px;
   font-weight: 700;
   color: #409eff;
+  white-space: nowrap;
 }
 
 .nav-menu {
   flex: 1;
+  min-width: 0;   /* 允许收缩, ellipsis 折叠才会触发 */
   border-bottom: none !important;
+}
+
+/* 菜单项多, 左右边距收窄一点 */
+.nav-menu :deep(.el-menu-item) {
+  padding: 0 14px;
+}
+
+.nav-menu :deep(.el-menu-item .el-icon) {
+  margin-right: 2px;
 }
 
 .user-area {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;   /* 不被菜单挤压, 否则头像会变形 */
+  margin-left: 12px;
 }
 
 .user-info {
@@ -170,6 +188,12 @@ const handleCommand = async (cmd) => {
   gap: 8px;
   cursor: pointer;
   outline: none;
+  flex-shrink: 0;
+}
+
+/* 头像固定方形, 不参与 flex 收缩 */
+.user-info :deep(.el-avatar) {
+  flex-shrink: 0;
 }
 
 .username {

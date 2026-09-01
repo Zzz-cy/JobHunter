@@ -6,6 +6,7 @@ from app.api.recommend import router as recommend_router
 from app.api.resumes import router as resumes_router
 from app.api.user import router as user_router
 from app.api.stats import router as stats_router
+from app.api.job_definitions import router as job_definitions_router
 from app.api.knowledge_graph import router as knowledge_graph_router
 
 # 所有需要挂载的 router 统一放这, 顺序就是 /docs 文档里的展示顺序
@@ -16,6 +17,7 @@ routers = [
     user_router,
     crawl_router,
     stats_router,
+    job_definitions_router,
     knowledge_graph_router,
     recommend_router,
 ]
