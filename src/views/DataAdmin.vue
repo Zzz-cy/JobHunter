@@ -1,13 +1,5 @@
 <template>
   <div class="data-admin-page page-container">
-    <div class="page-header">
-      <h1 class="page-title">
-        <el-icon color="#409eff"><DataAnalysis /></el-icon>
-        数据管理
-      </h1>
-      <p class="page-desc">同步爬虫采集的职位数据到数据库</p>
-    </div>
-
     <!-- 数据文件预览 -->
     <el-card class="preview-card" shadow="never" v-loading="loadingPreview">
       <template #header>
@@ -23,7 +15,7 @@
       <div v-if="!preview.exists" class="empty-state">
         <el-empty description="数据文件不存在">
           <p class="empty-hint">
-            请让爬虫把数据放到后端 <code>backend/db/data/jobs_raw.json</code>
+            请让爬虫把数据放到 <code>db/data/jobs_raw.json</code>
           </p>
         </el-empty>
       </div>
@@ -166,25 +158,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 26px;
-  font-weight: 600;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.page-desc {
-  color: #909399;
-  font-size: 14px;
-}
-
 .preview-card,
 .action-card,
 .tip-card {

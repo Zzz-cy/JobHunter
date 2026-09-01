@@ -1,11 +1,7 @@
 <template>
   <div class="page-container kg-page">
-    <!-- 页头:标题 + 方向选择器 -->
+    <!-- 页头:方向选择器 -->
     <div class="page-header kg-header">
-      <div>
-        <h1 class="page-title">岗位知识图谱</h1>
-        <p class="page-desc">基于 Neo4j 的岗位方向画像:热门城市 / 学历 / 经验 / 薪资 / 福利 / 相似方向</p>
-      </div>
       <el-select
         v-model="keyword"
         :loading="dirLoading"

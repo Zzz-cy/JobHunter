@@ -1,14 +1,5 @@
 <template>
   <div class="recommend-page page-container">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <h1 class="page-title">
-        <el-icon color="#409eff"><MagicStick /></el-icon>
-        智能岗位推荐
-      </h1>
-      <p class="page-desc">基于简历的 AI 岗位匹配 · 技能 + 语义 + 大模型重排</p>
-    </div>
-
     <!-- 简历选择区 -->
     <el-card class="resume-card" shadow="never" v-loading="resumeLoading">
       <template #header>
@@ -25,23 +16,30 @@
         <el-button type="primary" @click="goResumeManage">去上传简历</el-button>
       </el-empty>
 
-      <el-radio-group v-else v-model="selectedResumeId" class="resume-list">
-        <el-radio
+      <!-- 简历多了改用下拉选择(可滚动/可输入筛选), 不再平铺占满页面 -->
+      <el-select
+        v-else
+        v-model="selectedResumeId"
+        placeholder="选择推荐用的简历"
+        class="resume-select"
+        size="large"
+        filterable
+      >
+        <el-option
           v-for="r in resumeList"
           :key="r.id"
           :value="r.id"
-          border
-          class="resume-item"
+          :label="r.title || r.name"
         >
-          <div class="resume-info">
+          <div class="resume-option">
             <span class="resume-name">{{ r.title || r.name }}</span>
             <el-tag v-if="r.is_primary" size="small" type="success">默认</el-tag>
             <span class="resume-meta">
               {{ r.work_years || '工作年限未知' }} · {{ r.education || '学历未知' }}
             </span>
           </div>
-        </el-radio>
-      </el-radio-group>
+        </el-option>
+      </el-select>
     </el-card>
 
     <!-- 推荐操作 + 结果区 -->
@@ -49,6 +47,7 @@
       <template #header>
         <div class="card-title">
           <span>推荐结果</span>
+          <span class="header-hint">技能召回 + 向量召回 + LLM 重排</span>
           <el-button
             type="primary"
             :loading="recommendLoading"
@@ -209,23 +208,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 26px;
-  font-weight: 600;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.page-desc {
+.header-hint {
+  flex: 1;
+  text-align: left;
+  margin-left: 12px;
+  font-size: 12px;
+  font-weight: 400;
   color: #909399;
-  font-size: 14px;
 }
 
 .resume-card,
@@ -241,24 +230,19 @@ onMounted(() => {
   color: #303133;
 }
 
-.resume-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.resume-select {
   width: 100%;
+  max-width: 520px;
 }
 
-.resume-item {
-  width: 100%;
-  height: auto;
-  padding: 12px 16px;
-}
-
-.resume-info {
+.resume-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+.resume-option .resume-meta {
+  margin-left: auto;
 }
 
 .resume-name {

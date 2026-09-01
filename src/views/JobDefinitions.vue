@@ -1,13 +1,5 @@
 <template>
   <div class="job-def-page page-container">
-    <div class="page-header">
-      <h1 class="page-title">
-        <el-icon color="#409eff"><Compass /></el-icon>
-        岗位发现
-      </h1>
-      <p class="page-desc">从飙升技能与近期职位中自动发现新兴岗位, 由 LLM 归纳岗位画像</p>
-    </div>
-
     <!-- 发现操作(管理员) -->
     <el-card v-if="isAdmin" class="action-card" shadow="never">
       <div class="action-row">
@@ -21,6 +13,7 @@
           <el-icon v-if="!state.running"><MagicStick /></el-icon>
           {{ state.running ? '发现中...' : '开始新岗位发现' }}
         </el-button>
+        <span class="header-hint">从飙升技能与近期职位中发现新兴岗位, LLM 基于真实 JD 归纳画像</span>
         <span v-if="state.message" class="state-msg" :class="{ running: state.running }">
           {{ state.message }}
         </span>
@@ -231,23 +224,9 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
 
 <style scoped>
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 26px;
-  font-weight: 600;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.page-desc {
+.header-hint {
+  font-size: 12px;
   color: #909399;
-  font-size: 14px;
 }
 
 .action-card {

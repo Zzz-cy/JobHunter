@@ -1,13 +1,5 @@
 <template>
   <div class="resume-page page-container">
-    <div class="page-header">
-      <h1 class="page-title">
-        <el-icon color="#409eff"><Document /></el-icon>
-        我的简历
-      </h1>
-      <p class="page-desc">上传简历文件,AI 自动解析技能档案,用于智能推荐</p>
-    </div>
-
     <el-row :gutter="20">
       <!-- 左侧:简历列表 -->
       <el-col :span="16">
@@ -368,25 +360,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 26px;
-  font-weight: 600;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.page-desc {
-  color: #909399;
-  font-size: 14px;
-}
-
 .upload-card,
 .list-card,
 .tip-card {

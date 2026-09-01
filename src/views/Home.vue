@@ -41,20 +41,8 @@
             {{ kw }}
           </el-tag>
         </div>
-      </div>
-    </section>
-
-    <!-- 数据统计区 -->
-    <section class="stats-section">
-      <div class="page-container">
-        <el-row :gutter="20">
-          <el-col :span="6" v-for="stat in stats" :key="stat.label">
-            <el-card class="stat-card" shadow="hover">
-              <div class="stat-value">{{ stat.value }}</div>
-              <div class="stat-label">{{ stat.label }}</div>
-            </el-card>
-          </el-col>
-        </el-row>
+        <!-- 数据规模一行带过(替代原统计卡片) -->
+        <p class="hero-stats" v-if="statsText">{{ statsText }}</p>
       </div>
     </section>
 
@@ -110,12 +98,8 @@ const keyword = ref('')
 // 热门搜索词: 从 store 读, computed 自动跟踪
 const hotKeywords = computed(() => jobStore.hots || [])
 
-const stats = ref([
-  { label: '在招职位', value: '0' },
-  { label: '入驻公司', value: '0' },
-  { label: '技能字典', value: '0' },
-  { label: '行业覆盖', value: '0' }
-])
+// 数据规模一行文案(替代原统计卡片)
+const statsText = ref('')
 
 const hotJobs = ref([])
 
@@ -167,12 +151,8 @@ onMounted(async () => {
     request.get('/stats/overview'),
     request.get('/jobs/hot')
   ])
-  stats.value = [
-    { label: '在招职位', value: statRes.job_count },
-    { label: '入驻公司', value: statRes.company_count },
-    { label: '技能字典', value: statRes.skill_count },
-    { label: '行业覆盖', value: statRes.industry_count }
-  ]
+  statsText.value = `当前覆盖 ${Number(statRes.job_count).toLocaleString()} 个在招职位 · `
+    + `${statRes.company_count} 家公司 · ${statRes.skill_count} 项技能 · ${statRes.industry_count} 个行业`
   hotJobs.value = hotRes || []
 })
 </script>
@@ -180,7 +160,7 @@ onMounted(async () => {
 <style scoped>
 .hero-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 80px 20px 100px;
+  padding: 80px 20px 60px;
   color: #fff;
 }
 
@@ -236,27 +216,10 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.3);
 }
 
-.stats-section {
-  margin-top: -60px;
-  position: relative;
-  z-index: 2;
-}
-
-.stat-card {
-  text-align: center;
-  padding: 12px 0;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #409eff;
-}
-
-.stat-label {
-  color: #909399;
+.hero-stats {
   font-size: 13px;
-  margin-top: 4px;
+  opacity: 0.75;
+  margin: 4px 0 0;
 }
 
 .section-header {

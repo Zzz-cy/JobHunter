@@ -14,7 +14,7 @@
 | LLM 简历解析 | 大模型可切换：智谱 glm-4-flash（默认）/ DeepSeek / Kimi / 通义（在 `llm_module/.env` 配置） |
 | 向量检索 | ChromaDB（简历-JD 语义匹配 / 推荐系统） |
 | 图数据库 | Neo4j（岗位方向知识图谱：方向画像 + 相似方向） |
-| 检索 | Elasticsearch 8（职位全文检索） |
+| 检索 | Elasticsearch 9（职位全文检索，IK 分词） |
 | 认证 | JWT (python-jose + passlib) |
 
 ---
@@ -29,7 +29,7 @@ JobHunter/  (main 分支)
 ├── app/              后端 FastAPI(含 core/api/services/models)
 ├── db/               建表脚本 + 数据文件 + 文档(ES/爬虫/Schema)
 ├── docs/             开发文档
-├── evaluation/       评测套件(简历解析/人岗匹配, 含测试简历与报告)
+├── evaluation/       双层评测套件(synthetic 合成集 / real 真实集 / jd 交叉验证, 含报告)
 ├── scripts/          同步/初始化脚本(ES/Neo4j/向量库/MySQL导入)
 ├── src/ index.html package.json   前端 Vue 3
 ├── llm_module/       LLM 简历解析服务(独立 FastAPI, 端口 8001)
@@ -59,7 +59,7 @@ git clone https://github.com/Zzz-cy/JobHunter.git
 ### 2. 安装依赖
 
 ```bash
-cd backend
+# 项目根目录(前后端一体, 无 backend/ 子目录)
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # macOS/Linux
@@ -81,37 +81,44 @@ cp .env.example .env            # Windows 用: copy .env.example .env
 | `JWT_SECRET_KEY` | 生产环境务必改成 32+ 字符随机串（LLM 引擎验签也用这个，两边要一致） |
 | `ES_URL` / `ES_USERNAME` / `ES_PASSWORD` | Elasticsearch 连接信息 |
 | `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | Neo4j 连接信息 |
-| `ZHIPU_API_KEY` | 智谱 API Key（推荐的向量召回 + LLM 重排用） |
+| `ZHIPU_API_KEY` | 智谱 API Key（向量召回 + LLM 重排 + 新岗位发现用） |
 | `LLM_SERVICE_URL` | LLM 引擎地址（默认 `http://localhost:8001`） |
 
-### 4. 初始化数据库
+### 4. 初始化数据（四库：MySQL + ES + ChromaDB + Neo4j）
+
+**推荐方式：一键同步**（先启动后端 `python run.py`，然后二选一）
 
 ```bash
-# 在 backend 目录下
-python -m scripts.init_storage
+# 方式A: 免登录自毁式初始化(空库也能调, 成功后自动失效)
+curl -X POST http://127.0.0.1:8000/crawl/bootstrap
 ```
 
-该脚本会依次执行：
+方式 B：浏览器登录管理员账号 → 「数据管理」页 → 点「一键同步」。
 
-1. `db/mysql/01_schema.sql` —— 建表
-2. `db/mysql/02_seed.sql` —— 字典 + 测试账号
-3. `db/mysql/03_mock_data.sql` —— 假数据（前端联调用）
+一条链路完成：MySQL 建表+种子+岗位导入+热门技能重算 → ES 索引重建 → ChromaDB 向量库（智能全量/增量）→ Neo4j 图谱。重复执行幂等安全。
 
-### 5. 初始化 ES 索引与 Neo4j 图谱（可选，用到对应功能再跑）
+**手动分步方式**（脚本兜底，用到哪个跑哪个）：
 
 ```bash
-# ES: 建索引 + 同步职位数据(全文检索用)
-python -m scripts.init_es_index
-python -m scripts.sync_jobs_to_es
-
-# Neo4j: 从 db/neo4j/jobs.json 建岗位方向知识图谱(会问两遍 Neo4j 密码)
-python -m scripts.init_neo4j
-
-# ChromaDB: 构建岗位向量库(推荐系统语义召回用)
-python -m scripts.build_job_vectors
+python -m scripts.init_storage        # MySQL 建表 + 种子(01_schema + 02_seed)
+python -m scripts.import_jobs         # 导入 db/data/jobs_raw.json 岗位数据
+python -m scripts.init_es_index       # ES 建索引
+python -m scripts.sync_jobs_to_es     # ES 同步职位
+python -m scripts.build_job_vectors   # ChromaDB 岗位向量库
+python -m scripts.init_neo4j          # Neo4j 图谱
 ```
 
-### 6. 验证连接
+**内置测试账号**（种子自带，密码统一 `123456`；公开部署后务必改密码）：
+
+| 账号(手机号) | 角色 | 用途 |
+|---|---|---|
+| `13800000000` | 管理员 | 数据管理(一键同步/爬虫触发)、Dashboard、岗位发现触发与人工修正 |
+| `13900000001` | 求职者A | 演示主力：自带解析好的简历/技能/投递记录，直接看推荐与求职进度 |
+| `13900000002` | 新用户 | 空白账号：演示上传简历 → AI 解析 → 生成推荐的完整新手旅程 |
+
+> 各账号的详细演示路径见 `docs/TEST_ACCOUNTS.md`。
+
+### 5. 验证连接
 
 ```bash
 python -m scripts.check_db
@@ -119,7 +126,7 @@ python -m scripts.check_db
 
 输出 `✅ 全部通过` 即配置成功。
 
-### 7. 启动服务
+### 6. 启动服务
 
 ```bash
 python run.py
@@ -152,7 +159,7 @@ python -m api.main
 
 - 健康检查：`http://localhost:8001/health`
 - 简历解析接口：`POST /agents/analyze-resume`（由主后端自动调用，无需手动请求）
-- 主后端连接地址在 backend 的 `.env` 中配置：`LLM_SERVICE_URL=http://localhost:8001`
+- 主后端连接地址在项目根目录的 `.env` 中配置：`LLM_SERVICE_URL=http://localhost:8001`
 
 ---
 
@@ -166,7 +173,7 @@ python -m api.main
 ### 2. 安装依赖
 
 ```bash
-cd frontend
+# 项目根目录(前端代码在 src/, package.json 在根)
 npm install
 ```
 
@@ -212,8 +219,9 @@ npm run preview     # 本地预览构建产物
 | `/jobs` | 职位列表（ES 检索 + 多维筛选 + 分页） | 否 |
 | `/jobs/:id` | 职位详情 | 否 |
 | `/job-recommend` | 岗位推荐（技能召回 + 向量召回 + LLM 重排，带匹配分与理由） | 是 |
+| `/job-definitions` | 岗位发现（两步 LLM 发现新岗位并生成画像，管理员可触发/人工修正） | 否（操作需管理员） |
 | `/resume` | 简历管理（上传 + AI 解析） | 是 |
-| `/dashboard` | 数据分析大盘（ECharts，含技能需求演化时序图） | 否 |
+| `/dashboard` | 数据分析大盘（新兴技能发现/需求飙升榜/技能趋势与演化，ECharts） | 否 |
 | `/knowledge-graph` | 知识图谱（Neo4j 岗位方向画像，力导向图） | 否 |
 | `/recommend` | AI 求职顾问（对话式，管理员可从此进 Agent 监控后台） | 是 |
 | `/admin` | Agent 监控后台 | 管理员 |

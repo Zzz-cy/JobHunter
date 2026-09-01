@@ -1,13 +1,5 @@
 <template>
   <div class="dashboard-page page-container">
-    <div class="page-header">
-      <h1 class="page-title">
-        <el-icon color="#409eff"><DataAnalysis /></el-icon>
-        数据分析大盘
-      </h1>
-      <p class="page-desc">基于已采集招聘数据的多维度可视化分析</p>
-    </div>
-
     <!-- 顶部统计卡片 -->
     <el-row :gutter="20" class="stat-row">
       <el-col :span="6" v-for="stat in topStats" :key="stat.label">
@@ -248,7 +240,7 @@ import { useUserStore } from '@/stores/user'
 // 顶部统计
 const topStats = reactive([
   { label: '在招职位', value: '0', icon: 'Briefcase', bg: '#409eff' },
-  { label: '入驻公司', value: '0', icon: 'OfficeBuilding', bg: '#67c23a' },
+  { label: '覆盖公司', value: '0', icon: 'OfficeBuilding', bg: '#67c23a' },
   { label: '覆盖城市', value: '0', icon: 'Location', bg: '#e6a23c' },
   { label: '技能字典', value: '0', icon: 'Cpu', bg: '#f56c6c' }
 ])
@@ -596,25 +588,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 26px;
-  font-weight: 600;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.page-desc {
-  color: #909399;
-  font-size: 14px;
-}
-
 .stat-row {
   margin-bottom: 16px;
 }
