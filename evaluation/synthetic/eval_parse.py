@@ -6,39 +6,18 @@
 """
 import argparse
 import json
-import re
 import time
 from datetime import datetime
 from pathlib import Path
+import sys
 
 import httpx
 import pymysql
 
-from common import API_BASE, client, load_db_config, login
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # common.py 在 evaluation/
+from common import API_BASE, client, load_db_config, login, compare_field
 
 EVAL_DIR = Path(__file__).resolve().parent
-
-
-def digits(s: str) -> str:
-    return re.sub(r"\D", "", s or "")
-
-
-def compare_field(field: str, gt, got) -> bool:
-    """单个字段比对, 按上面注释的评分规则。"""
-    if got is None:
-        return False
-    if field in ("name", "city", "education"):
-        return str(got).strip() == str(gt).strip()
-    if field == "gender":
-        return int(got) == int(gt)
-    if field in ("age", "work_years"):
-        return abs(int(got) - int(gt)) <= 1
-    if field == "phone":
-        g, p = digits(str(gt)), digits(str(got))
-        return bool(p) and p[-4:] == g[-4:]
-    if field == "email":
-        return str(got).strip().lower() == str(gt).strip().lower()
-    return False
 
 
 def main():
@@ -48,7 +27,7 @@ def main():
     args = parser.parse_args()
 
     gt_list = json.loads((EVAL_DIR / "ground_truth.json").read_text(encoding="utf-8"))
-    resumes_dir = EVAL_DIR / "test_resumes"
+    resumes_dir = EVAL_DIR / "resumes"
     token = login(args.account, args.password)
     headers = {"Authorization": f"Bearer {token}"}
 

@@ -221,18 +221,38 @@ npm run preview     # 本地预览构建产物
 | `/profile` | 个人中心（求职进度看板） | 是 |
 | `/login` `/register` | 登录 / 注册 | 否 |
 
-### 准确率评测（可复现）
+### 准确率评测（双层评测体系，可复现）
 
-`backend/evaluation/` 内置评测套件：10 份合成简历 + 标准答案 + 自动化脚本。
+`backend/evaluation/` 下两套互补的评测：
+
+| 层 | 目录 | 数据 | 证明什么 |
+|---|---|---|---|
+| 合成集（可控） | `evaluation/synthetic/` | 10 份标准 + 6 份高难度简历，标准答案先于简历存在 | 严格准确率 + 困难样本边界行为 |
+| 真实集（可信） | `evaluation/real/` | 老师提供的 13 份真实简历，人工标注答案 | 真实世界乱格式也能用 |
 
 ```bash
-# 需先启动主后端(8000) + LLM引擎(8001)
-python evaluation/gen_resumes.py      # 生成测试简历(已内置, 一般不用重跑)
-python evaluation/eval_parse.py       # 简历解析评测 → report_parse.md
-python evaluation/eval_matching.py    # 人岗匹配评测 → report_matching.md
+# 需先启动主后端(8000); 解析评测还需 LLM引擎(8001)
+
+# ---- 合成集(标准答案已知) ----
+python evaluation/synthetic/gen_resumes.py        # 生成测试简历(已内置, 一般不用重跑)
+python evaluation/synthetic/eval_parse.py         # 简历解析评测 → report_parse.md
+python evaluation/synthetic/eval_matching.py      # 人岗匹配评测 → report_matching.md
+
+# ---- 真实集(人工标注) ----
+python evaluation/real/eval_real_score.py         # 按标注答案算准确率 → report_real_accuracy.md
+python evaluation/real/eval_matching_real.py      # 生成 Top5 推荐候选(标注用)
+python evaluation/real/eval_matching_real.py --score   # 标注完算 P@5 → report_matching_real.md
+
+# ---- JD解析(平台标签交叉验证, 全自动无需标注) ----
+python evaluation/jd/eval_jd_parse.py               # 抽100条JD核验 → report_jd_parse.md
 ```
 
-最近一次实测（16 份测试简历，含 6 份高难度样本）：简历解析综合字段准确率 **95.8%**，人岗匹配 M1 命中率 **90.6%**、Top1 相关率 **100%**。详见 `evaluation/report_parse.md` 与 `report_matching.md`。
+最近一次实测：
+
+- **合成集**（16 份，含 6 份高难度样本）：解析综合字段准确率 **95.8%**，人岗匹配 M1 命中率 **90.6%**、Top1 相关率 **100%**（`synthetic/report_parse.md`、`synthetic/report_matching.md`）
+- **真实集**（13 份真实简历）：解析 **13/13 成功**，人工标注准确率 **96.0%**、技能召回 **89.8%**（`real/report_real_accuracy.md`）。首轮实测 84.1% 暴露字典词形覆盖不足（`java` 小写、`C`≠`C语言`、`Adobe Premiere Pro`≠`Premiere`），扩充字典别名并回填后提升至 96.0%——正是"评测发现问题 → 新兴技能机制修复"的闭环案例
+- **真实集人岗匹配**（13 份 × Top5 人工二元标注，全量参与）：**Precision@5 90.8%**、Top1 相关率 **100%**、MRR **1.00**（`real/report_matching_real.md`）。迭代过程：① 修复 LLM 重排返回自编号 id 的 bug（理由降级为兜底文案、排序变裸分）→ prompt 强制原样复制岗位编号 + 序号回映射；② 增加岗位性质匹配（3年以上社招不推实习岗、无经历学生优先实习岗），prompt 引导 + 代码侧确定性降权双保险——该规则修复后，原本因"实习岗资历错配"仅 1/5 的转行样本（仓储管理背景）提升至 3/5，重新纳入评测
+- **JD 解析**（核验式交叉验证，抽 100 条全自动）：**标签一致率 91.6%**（`jd/report_jd_parse.md`）。平台官方技能标签为基准，LLM 逐标签核验 JD 全文是否支持；顺带发现 8.4% 平台标签噪声（粗粒度分类词挂错岗位），即"多源异构数据交叉验证"的直接证据
 
 ### 后端 API
 

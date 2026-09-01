@@ -6,7 +6,7 @@
           <el-icon :size="20" color="#409eff"><Promotion /></el-icon>
           <span>JobHunter</span>
         </div>
-        <p class="footer-desc">智能求职推荐平台 · 数据聚合 + 知识图谱 + AI 推荐</p>
+        <p class="footer-desc">智能求职推荐平台 · 数据聚合 + AI 推荐 + 数据洞察</p>
       </div>
 
       <div class="footer-right">

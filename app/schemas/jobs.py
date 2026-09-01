@@ -25,7 +25,7 @@ class JobSearchSchema(PageParams, ORMOut):
     industry: str | None = Field(default=None, description="行业 code, 如 IT / IT-RD")
     salary_range: str | None = Field(default=None, description="薪资区间(K), 如 '10-20' / '50-'")
     source: str | None = None
-    sort: str = Field(default="default", description="排序: default/latest/salary")
+    sort: str = Field(default="latest", description="排序: latest/salary")
 
 
 # 出参: 公司信息(嵌套在 JobOut 里)

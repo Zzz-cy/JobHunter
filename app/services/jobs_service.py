@@ -20,10 +20,7 @@ def _parse_salary_range(salary_range: str | None) -> tuple[int | None, int | Non
 
 
 # 排序方式映射表: sort 值 → 排序字段(倒序)
-# TODO(推荐系统): default 目前和 latest 一样(纯按发布时间),
-#   接入推荐系统后应升级为多因素加权排序(相关度 + 新鲜度 + 薪资吸引力 + quality_score)。
 _SORT_MAP = {
-    "default": Job.publish_at.desc(),  # 综合(临时等于最新, 待推荐系统优化)
     "latest": Job.publish_at.desc(),  # 最新: 纯按发布时间
     "salary": Job.salary_max.desc(),  # 薪资: 纯按薪资上限
 }
@@ -80,8 +77,8 @@ async def query(job: JobSearchSchema, db: AsyncSession):
     if need_join_skill or need_join_company:
         stmt = stmt.distinct()
 
-    # 排序: 按 sort 值选字段, 默认按发布时间倒序
-    stmt = stmt.order_by(_SORT_MAP.get(job.sort, _SORT_MAP["default"]))
+    # 排序: 按 sort 值选字段, 未知值回退最新
+    stmt = stmt.order_by(_SORT_MAP.get(job.sort, _SORT_MAP["latest"]))
 
     # 总数: 单独 count 一次(必须在加 limit/offset 之前, 不然数的是当前页条数)
     # 用 subquery() 包一层, 规避 DISTINCT + JOIN 对 count 的干扰
@@ -230,7 +227,7 @@ def _build_es_query(params: JobSearchSchema) -> dict:
         sort = [{"_score": "desc"}, {"publish_at": "desc"}]
     elif params.sort == "salary":
         sort = [{"salary_max": "desc"}]
-    else:  # default / latest
+    else:  # latest
         sort = [{"publish_at": "desc"}]
 
     return {

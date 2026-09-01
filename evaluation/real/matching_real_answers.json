@@ -1,0 +1,1475 @@
+[
+  {
+    "resume_id": 10,
+    "resume": "真实-刘广有简历",
+    "candidate": "刘广有",
+    "resume_skills": [
+      "Excel",
+      "Linux",
+      "Python",
+      "SQL"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 613,
+        "title": "运维工程师",
+        "company": "苏州科达科技股份有限公司",
+        "city": "江苏",
+        "salary": "15-99K",
+        "job_skills": [
+          "Docker",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL"
+        ],
+        "match_score": "80.0",
+        "reason": "运维技能匹配，但实习岗位资历错配",
+        "relevant": true,
+        "note": "远程技术支持+巡检文档, 转行可达, 级别匹配"
+      },
+      {
+        "rank": 2,
+        "job_id": 96,
+        "title": "数据迁移工程师",
+        "company": "航天网安技术（北京）有限公司",
+        "city": "北京",
+        "salary": "8-12K",
+        "job_skills": [
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL"
+        ],
+        "match_score": "80.0",
+        "reason": "数据迁移技能匹配，实习岗位合适",
+        "relevant": true,
+        "note": "驻场数据治理+业务表格梳理, 数据背景转行入口"
+      },
+      {
+        "rank": 3,
+        "job_id": 104,
+        "title": "AI应用后端开发工程师 - AI 工具运营",
+        "company": "北京字跳网络技术有限公司",
+        "city": "北京",
+        "salary": "7-7K",
+        "job_skills": [
+          "Django",
+          "Flask",
+          "Go",
+          "Linux",
+          "MySQL",
+          "Python",
+          "Redis",
+          "SQL",
+          "大模型",
+          "数据结构",
+          "算法"
+        ],
+        "match_score": "80.0",
+        "reason": "后端开发技能匹配，实习岗位合适",
+        "relevant": false,
+        "note": "纯开发岗要写采集系统, 基础Python撑不住"
+      },
+      {
+        "rank": 4,
+        "job_id": 39,
+        "title": "数据服务系统 - IT系统工程师",
+        "company": "新奥集团股份有限公司",
+        "city": "北京",
+        "salary": "3-4K",
+        "job_skills": [
+          "C++",
+          "Docker",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "Redis",
+          "SQL",
+          "数据结构",
+          "算法"
+        ],
+        "match_score": "75.0",
+        "reason": "IT开发技能匹配，实习岗位合适",
+        "relevant": true,
+        "note": "'协助开发'性质初级岗, Python基础可用"
+      },
+      {
+        "rank": 5,
+        "job_id": 3549,
+        "title": "Python 爬虫工程师（数据采集方向）",
+        "company": "北京伽睿智能科技集团有限公司",
+        "city": "北京",
+        "salary": "9-12K",
+        "job_skills": [
+          "Docker",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL",
+          "数据分析"
+        ],
+        "match_score": "75.0",
+        "reason": "爬虫技能匹配，实习岗位合适",
+        "relevant": false,
+        "note": "Django/Flask/Go后端栈, 无开发经验"
+      }
+    ]
+  },
+  {
+    "resume_id": 9,
+    "resume": "真实-余均获简历",
+    "candidate": "余均获",
+    "resume_skills": [
+      "Excel",
+      "Hadoop",
+      "Hive",
+      "Java",
+      "Linux",
+      "MySQL",
+      "Photoshop",
+      "PowerPoint",
+      "Premiere",
+      "Python",
+      "SQL",
+      "Word"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 3247,
+        "title": "数据开发工程师",
+        "company": "海南沪能新能源信息科技发展有限公司",
+        "city": "海南",
+        "salary": "6-7K",
+        "job_skills": [
+          "Flink",
+          "Git",
+          "Hadoop",
+          "Hive",
+          "Java",
+          "Kafka",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL",
+          "Spark",
+          "产品经理",
+          "数据分析"
+        ],
+        "match_score": "80.0",
+        "reason": "技能部分匹配，适合实习/校招",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 34,
+        "title": "【2027届秋招】数据仓库工程师",
+        "company": "北京畅游天下网络技术集团有限公司",
+        "city": "北京",
+        "salary": "15-23K",
+        "job_skills": [
+          "Flink",
+          "Hadoop",
+          "Hive",
+          "Java",
+          "Kafka",
+          "Linux",
+          "Python",
+          "SQL"
+        ],
+        "match_score": "70.0",
+        "reason": "技能部分匹配，适合实习/校招",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 1755,
+        "title": "大数据工程师(应届研究生)",
+        "company": "北京安晨信息技术有限公司",
+        "city": "河南",
+        "salary": "4-5K",
+        "job_skills": [
+          "Flink",
+          "Hadoop",
+          "Hive",
+          "Java",
+          "Linux",
+          "Python",
+          "SQL",
+          "Spark",
+          "数据结构",
+          "算法"
+        ],
+        "match_score": "70.0",
+        "reason": "技能部分匹配，适合实习/校招",
+        "relevant": false,
+        "note": "岗位限应届研究生, 候选人为本科"
+      },
+      {
+        "rank": 4,
+        "job_id": 3549,
+        "title": "Python 爬虫工程师（数据采集方向）",
+        "company": "北京伽睿智能科技集团有限公司",
+        "city": "北京",
+        "salary": "9-12K",
+        "job_skills": [
+          "Docker",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL",
+          "数据分析"
+        ],
+        "match_score": "70.0",
+        "reason": "技能部分匹配，适合实习/校招",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 4262,
+        "title": "数据测试实习生",
+        "company": "深圳拓竹科技有限公司",
+        "city": "上海",
+        "salary": "12-13K",
+        "job_skills": [
+          "Flink",
+          "Hive",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL",
+          "Spark"
+        ],
+        "match_score": "60.0",
+        "reason": "技能部分匹配，适合实习/校招",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 11,
+    "resume": "真实-刘李兴简历",
+    "candidate": "刘李兴",
+    "resume_skills": [
+      "C语言",
+      "Dreamweaver",
+      "Java",
+      "Photoshop",
+      "Python",
+      "机器学习",
+      "网络安全"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 4939,
+        "title": "AI实习生",
+        "company": "广州汇通国信科技有限公司",
+        "city": "广东",
+        "salary": "4-7K",
+        "job_skills": [
+          "Git",
+          "Java",
+          "Linux",
+          "PyTorch",
+          "Python",
+          "SQL",
+          "TensorFlow",
+          "机器学习",
+          "深度学习",
+          "算法"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配，适合实习生岗位",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 469,
+        "title": "IT开发实习生",
+        "company": "深圳维特智能科技有限公司",
+        "city": "广东",
+        "salary": "3-4K",
+        "job_skills": [
+          "C++",
+          "CSS",
+          "Docker",
+          "Go",
+          "Java",
+          "Kubernetes",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL",
+          "数据结构",
+          "机器学习",
+          "算法"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配，适合实习生岗位",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 1208,
+        "title": "应用开发实习生(J23304)",
+        "company": "神州数码(中国)有限公司",
+        "city": "四川",
+        "salary": "4-4K",
+        "job_skills": [
+          "Flask",
+          "Git",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "React",
+          "SQL",
+          "Vue",
+          "大模型",
+          "数据结构"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配，适合实习生岗位",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 1486,
+        "title": "算法工程师（27届华为云秋招）",
+        "company": "华为技术有限公司",
+        "city": "陕西",
+        "salary": "15-30K",
+        "job_skills": [
+          "Hadoop",
+          "Java",
+          "NLP",
+          "Python",
+          "TensorFlow",
+          "数据结构",
+          "机器学习",
+          "深度学习",
+          "算法",
+          "网络安全"
+        ],
+        "match_score": "80.0",
+        "reason": "技能部分匹配，需补充深度学习经验",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 1866,
+        "title": "运维实习生",
+        "company": "数研院（福建）信息产业发展有限公司",
+        "city": "福建",
+        "salary": "3-4K",
+        "job_skills": [
+          "Java",
+          "Python",
+          "数据结构",
+          "机器学习",
+          "深度学习",
+          "算法"
+        ],
+        "match_score": "80.0",
+        "reason": "技能匹配，适合实习生岗位",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 12,
+    "resume": "真实-曾卓恒简历",
+    "candidate": "曾卓恒",
+    "resume_skills": [
+      "Linux",
+      "MySQL",
+      "Office",
+      "Photoshop",
+      "SQL",
+      "Spring Boot",
+      "Vue"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 3714,
+        "title": "测试工程师-北京",
+        "company": "中电科金仓(北京)科技股份有限公司",
+        "city": "北京",
+        "salary": "15-17K",
+        "job_skills": [
+          "Docker",
+          "Java",
+          "Linux",
+          "MySQL",
+          "SQL",
+          "Vue",
+          "自动化测试"
+        ],
+        "match_score": "60.0",
+        "reason": "技能部分契合，测试经验不足",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 3161,
+        "title": "Java软件工程师",
+        "company": "桂林长海发展有限责任公司",
+        "city": "广西",
+        "salary": "12-22K",
+        "job_skills": [
+          "CSS",
+          "Java",
+          "Linux",
+          "MySQL",
+          "React",
+          "SQL",
+          "Vue",
+          "数据结构",
+          "算法"
+        ],
+        "match_score": "60.0",
+        "reason": "技能契合，但缺乏正式工作经历",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 2387,
+        "title": "初级全栈开发工程师",
+        "company": "沈阳尚源智慧科技有限公司",
+        "city": "辽宁",
+        "salary": "6-8K",
+        "job_skills": [
+          "CSS",
+          "Docker",
+          "Git",
+          "Go",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Node.js",
+          "Python",
+          "React",
+          "SQL",
+          "Vue",
+          "数据结构",
+          "算法"
+        ],
+        "match_score": "60.0",
+        "reason": "技能契合，但缺乏正式工作经历",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 2772,
+        "title": "运营实习生",
+        "company": "深圳艾欧普特数字科技有限公司",
+        "city": "云南",
+        "salary": "4-6K",
+        "job_skills": [
+          "数据分析"
+        ],
+        "match_score": "40.0",
+        "reason": "技能契合，用户运营经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 2776,
+        "title": "运营实习生",
+        "company": "深圳艾欧普特数字科技有限公司",
+        "city": "云南",
+        "salary": "4-6K",
+        "job_skills": [
+          "数据分析"
+        ],
+        "match_score": "40.0",
+        "reason": "技能契合，用户运营经验丰富",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 13,
+    "resume": "真实-深圳市龙孚翔科技有限公司-测试工程师-刘洋",
+    "candidate": "刘洋",
+    "resume_skills": [
+      "Linux",
+      "Oracle",
+      "Python",
+      "机器学习",
+      "神经网络"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 4002,
+        "title": "FDE售前咨询",
+        "company": "北京云创讯通科技有限公司",
+        "city": "北京",
+        "salary": "6-11K",
+        "job_skills": [
+          "Python",
+          "大模型",
+          "机器学习"
+        ],
+        "match_score": "80.0",
+        "reason": "Python和机器学习技能相关",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 4136,
+        "title": "现场应用工程师-2027届（北京）",
+        "company": "普源精电2027届校招",
+        "city": "北京",
+        "salary": "-",
+        "job_skills": [
+          "C#",
+          "C++",
+          "Linux",
+          "Python"
+        ],
+        "match_score": "80.0",
+        "reason": "Python和Linux技能相关，适合现场应用工程师",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 338,
+        "title": "FAE（27届应届生）",
+        "company": "微相科技（上海）有限公司",
+        "city": "上海",
+        "salary": "4-6K",
+        "job_skills": [
+          "C++",
+          "Linux",
+          "Python",
+          "数据分析",
+          "通信"
+        ],
+        "match_score": "80.0",
+        "reason": "Python和Linux技能与FAE匹配",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 4004,
+        "title": "售前技术支持",
+        "company": "上海欣诺通信技术股份有限公司",
+        "city": "北京",
+        "salary": "10-15K",
+        "job_skills": [
+          "大模型",
+          "网络安全",
+          "通信"
+        ],
+        "match_score": "70.0",
+        "reason": "售前咨询经验与售前技术支持匹配",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 2600,
+        "title": "技术支持管培生",
+        "company": "江西维网软件有限公司",
+        "city": "江西",
+        "salary": "2-4K",
+        "job_skills": [
+          "C#",
+          "Java",
+          "MySQL",
+          "Python",
+          "SQL"
+        ],
+        "match_score": "70.0",
+        "reason": "Python技能与技术翻译官匹配",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 14,
+    "resume": "真实-潘伟超+广州商学院+联想+AI开发实习生",
+    "candidate": "潘伟超",
+    "resume_skills": [
+      "Bootstrap",
+      "Java",
+      "Keras",
+      "MyBatis",
+      "MySQL",
+      "PyTorch",
+      "SQL",
+      "Spring Boot",
+      "Unity",
+      "jQuery"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 1386,
+        "title": "Java开发实习生（天津-客成）",
+        "company": "用友金融信息技术股份有限公司",
+        "city": "天津",
+        "salary": "5-6K",
+        "job_skills": [
+          "Java",
+          "MySQL",
+          "SQL"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配，实习经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 4939,
+        "title": "AI实习生",
+        "company": "广州汇通国信科技有限公司",
+        "city": "广东",
+        "salary": "4-7K",
+        "job_skills": [
+          "Git",
+          "Java",
+          "Linux",
+          "PyTorch",
+          "Python",
+          "SQL",
+          "TensorFlow",
+          "机器学习",
+          "深度学习",
+          "算法"
+        ],
+        "match_score": "80.0",
+        "reason": "AI方向技能匹配，实习经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 3017,
+        "title": "Java开发实习生（全栈开发AI原生方向）",
+        "company": "亚信科技（中国）有限公司",
+        "city": "吉林",
+        "salary": "3-5K",
+        "job_skills": [
+          "Go",
+          "Java",
+          "MySQL",
+          "Redis",
+          "SQL",
+          "大模型",
+          "算法"
+        ],
+        "match_score": "80.0",
+        "reason": "技能匹配，实习经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 2700,
+        "title": "AI开发实习生",
+        "company": "贵州华泰智远大数据服务有限公司",
+        "city": "贵州",
+        "salary": "3-4K",
+        "job_skills": [
+          "Docker",
+          "Git",
+          "Java",
+          "Linux",
+          "NLP",
+          "Python",
+          "大模型"
+        ],
+        "match_score": "80.0",
+        "reason": "技能匹配，实习经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 1208,
+        "title": "应用开发实习生(J23304)",
+        "company": "神州数码(中国)有限公司",
+        "city": "四川",
+        "salary": "4-4K",
+        "job_skills": [
+          "Flask",
+          "Git",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "React",
+          "SQL",
+          "Vue",
+          "大模型",
+          "数据结构"
+        ],
+        "match_score": "75.0",
+        "reason": "技能匹配，实习经验丰富",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 15,
+    "resume": "真实-童景熙简历",
+    "candidate": "童景熙",
+    "resume_skills": [
+      "ChatGPT",
+      "Docker",
+      "Java",
+      "Linux",
+      "Photoshop",
+      "Python"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 291,
+        "title": "数据平台开发实习生 (MJ000473)",
+        "company": "上海迪果网络科技有限公司",
+        "city": "上海",
+        "salary": "6-9K",
+        "job_skills": [
+          "Docker",
+          "Flink",
+          "Go",
+          "Java",
+          "Kafka",
+          "Linux",
+          "Python",
+          "SQL",
+          "数据分析"
+        ],
+        "match_score": "85.0",
+        "reason": "Python基础，需加强其他技能",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 2051,
+        "title": "全栈开发实习生",
+        "company": "重庆菲利信科技有限公司",
+        "city": "重庆",
+        "salary": "2-2K",
+        "job_skills": [
+          "CSS",
+          "Docker",
+          "Flask",
+          "Git",
+          "Java",
+          "Kubernetes",
+          "Linux",
+          "MySQL",
+          "NLP",
+          "PyTorch",
+          "Python",
+          "React",
+          "Redis",
+          "SQL",
+          "TensorFlow",
+          "Vue",
+          "大模型",
+          "机器学习",
+          "深度学习",
+          "算法"
+        ],
+        "match_score": "85.0",
+        "reason": "Python基础，需加强其他技能",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 469,
+        "title": "IT开发实习生",
+        "company": "深圳维特智能科技有限公司",
+        "city": "广东",
+        "salary": "3-4K",
+        "job_skills": [
+          "C++",
+          "CSS",
+          "Docker",
+          "Go",
+          "Java",
+          "Kubernetes",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL",
+          "数据结构",
+          "机器学习",
+          "算法"
+        ],
+        "match_score": "80.0",
+        "reason": "Python基础，需加强其他技能",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 3549,
+        "title": "Python 爬虫工程师（数据采集方向）",
+        "company": "北京伽睿智能科技集团有限公司",
+        "city": "北京",
+        "salary": "9-12K",
+        "job_skills": [
+          "Docker",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Python",
+          "SQL",
+          "数据分析"
+        ],
+        "match_score": "80.0",
+        "reason": "Python基础，需加强数据库",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 2387,
+        "title": "初级全栈开发工程师",
+        "company": "沈阳尚源智慧科技有限公司",
+        "city": "辽宁",
+        "salary": "6-8K",
+        "job_skills": [
+          "CSS",
+          "Docker",
+          "Git",
+          "Go",
+          "Java",
+          "Linux",
+          "MySQL",
+          "Node.js",
+          "Python",
+          "React",
+          "SQL",
+          "Vue",
+          "数据结构",
+          "算法"
+        ],
+        "match_score": "80.0",
+        "reason": "Python基础，需加强其他技能",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 16,
+    "resume": "真实-谢依沙的简历",
+    "candidate": "谢依沙",
+    "resume_skills": [
+      "Python",
+      "人工智能",
+      "机器学习"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 2062,
+        "title": "AI agent研发（视频内容自动化工作流）",
+        "company": "北京智颖科技有限公司",
+        "city": "重庆",
+        "salary": "6-12K",
+        "job_skills": [
+          "Python"
+        ],
+        "match_score": "90.0",
+        "reason": "技能高度契合，AI经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 1420,
+        "title": "小红书运营",
+        "company": "西安圣心安诺心理咨询有限公司",
+        "city": "陕西",
+        "salary": "5-10K",
+        "job_skills": [],
+        "match_score": "85.0",
+        "reason": "技能契合，新媒体运营经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 3196,
+        "title": "网店运营",
+        "company": "广西共赢电子商务有限公司",
+        "city": "广西",
+        "salary": "-",
+        "job_skills": [
+          "数据分析"
+        ],
+        "match_score": "80.0",
+        "reason": "技能契合，运营经验匹配",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 3617,
+        "title": "新媒体运营助理",
+        "company": "北京智殷机器人科技有限公司",
+        "city": "北京",
+        "salary": "5-6K",
+        "job_skills": [
+          "数据分析"
+        ],
+        "match_score": "75.0",
+        "reason": "技能契合，但经验略不足",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 4506,
+        "title": "新媒体运营",
+        "company": "上海晋展网络科技有限公司",
+        "city": "上海",
+        "salary": "4-6K",
+        "job_skills": [
+          "数据分析"
+        ],
+        "match_score": "75.0",
+        "reason": "技能契合，但经验略不足",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 17,
+    "resume": "真实-郑浩楠简历",
+    "candidate": "郑浩楠",
+    "resume_skills": [
+      "CAD",
+      "Linux",
+      "Python",
+      "机器学习",
+      "神经网络"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 3052,
+        "title": "FAE工程师",
+        "company": "长春长光辰芯微电子股份有限公司",
+        "city": "吉林",
+        "salary": "6-8K",
+        "job_skills": [
+          "Python"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配，经验略不足",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 4701,
+        "title": "软件工程师",
+        "company": "村田(中国)投资有限公司",
+        "city": "上海",
+        "salary": "-",
+        "job_skills": [
+          "Linux",
+          "Python",
+          "通信"
+        ],
+        "match_score": "80.0",
+        "reason": "技能匹配，经验略不足",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 3663,
+        "title": "硬件研发助理工程师",
+        "company": "联想开天科技有限公司",
+        "city": "北京",
+        "salary": "10-15K",
+        "job_skills": [
+          "Python",
+          "自动化测试"
+        ],
+        "match_score": "70.0",
+        "reason": "技能匹配，经验略不足",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 3206,
+        "title": "服务调试助理专员",
+        "company": "广西柳工机械股份有限公司",
+        "city": "广西",
+        "salary": "3-4K",
+        "job_skills": [
+          "Linux"
+        ],
+        "match_score": "70.0",
+        "reason": "技能匹配，经验略不足",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 522,
+        "title": "fae初级工程师",
+        "company": "广州市凯泽利科技有限公司",
+        "city": "广东",
+        "salary": "3-4K",
+        "job_skills": [
+          "Linux"
+        ],
+        "match_score": "70.0",
+        "reason": "技能匹配，初级工程师",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 18,
+    "resume": "真实-陈春荣简历",
+    "candidate": "陈春荣",
+    "resume_skills": [
+      "C语言",
+      "Java",
+      "Linux",
+      "MySQL",
+      "Oracle",
+      "SQL Server",
+      "数据结构"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 2489,
+        "title": "运维工程师",
+        "company": "亚信科技（中国）有限公司",
+        "city": "河北",
+        "salary": "4-6K",
+        "job_skills": [
+          "Linux"
+        ],
+        "match_score": "90.0",
+        "reason": "技能匹配，经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 2942,
+        "title": "实施工程师",
+        "company": "全联互联网医院（内蒙古）有限公司",
+        "city": "内蒙古",
+        "salary": "3-8K",
+        "job_skills": [
+          "Java",
+          "Linux",
+          "MySQL",
+          "SQL"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配，经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 3019,
+        "title": "SRE运维工程师（实习）",
+        "company": "恒安嘉新（北京）科技股份公司",
+        "city": "吉林",
+        "salary": "3-4K",
+        "job_skills": [
+          "Linux",
+          "MySQL",
+          "SQL"
+        ],
+        "match_score": "45.0",
+        "reason": "技能匹配，实习经验丰富",
+        "relevant": false,
+        "note": "SRE实习岗, 3年经验属资历错配"
+      },
+      {
+        "rank": 4,
+        "job_id": 2042,
+        "title": "运维实习生",
+        "company": "北京卓信智恒数据科技股份有限公司",
+        "city": "重庆",
+        "salary": "4-6K",
+        "job_skills": [
+          "MySQL",
+          "SQL"
+        ],
+        "match_score": "42.5",
+        "reason": "技能匹配，但经验略多",
+        "relevant": false,
+        "note": "运维实习岗, 3年经验属资历错配"
+      },
+      {
+        "rank": 5,
+        "job_id": 3134,
+        "title": "初级运维工程师（2027届实习生）",
+        "company": "中国软件与技术服务股份有限公司",
+        "city": "黑龙江",
+        "salary": "2-3K",
+        "job_skills": [
+          "MySQL",
+          "SQL",
+          "数据分析"
+        ],
+        "match_score": "42.5",
+        "reason": "技能匹配，实习经验丰富",
+        "relevant": false,
+        "note": "2027届实习生岗, 3年经验属资历错配"
+      }
+    ]
+  },
+  {
+    "resume_id": 19,
+    "resume": "真实-黄振崴-联想天津-AI开发实习生",
+    "candidate": "黄振崴",
+    "resume_skills": [
+      "C语言",
+      "Dreamweaver",
+      "Excel",
+      "Java",
+      "Keras",
+      "OpenCV",
+      "Photoshop",
+      "PowerPoint",
+      "Premiere",
+      "PyTorch",
+      "Python",
+      "React",
+      "TensorFlow",
+      "Word"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 4939,
+        "title": "AI实习生",
+        "company": "广州汇通国信科技有限公司",
+        "city": "广东",
+        "salary": "4-7K",
+        "job_skills": [
+          "Git",
+          "Java",
+          "Linux",
+          "PyTorch",
+          "Python",
+          "SQL",
+          "TensorFlow",
+          "机器学习",
+          "深度学习",
+          "算法"
+        ],
+        "match_score": "90.0",
+        "reason": "技能匹配度高，实习岗位适合",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 2051,
+        "title": "全栈开发实习生",
+        "company": "重庆菲利信科技有限公司",
+        "city": "重庆",
+        "salary": "2-2K",
+        "job_skills": [
+          "CSS",
+          "Docker",
+          "Flask",
+          "Git",
+          "Java",
+          "Kubernetes",
+          "Linux",
+          "MySQL",
+          "NLP",
+          "PyTorch",
+          "Python",
+          "React",
+          "Redis",
+          "SQL",
+          "TensorFlow",
+          "Vue",
+          "大模型",
+          "机器学习",
+          "深度学习",
+          "算法"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配度高，但实习岗位可能不满足工作年限要求",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 2068,
+        "title": "自动化测试开发工程师实习生",
+        "company": "深圳传音控股股份有限公司",
+        "city": "重庆",
+        "salary": "3-3K",
+        "job_skills": [
+          "Java",
+          "NLP",
+          "PyTorch",
+          "Python",
+          "大模型",
+          "自动化测试"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配度高，实习岗位适合",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 459,
+        "title": "测试开发实习生",
+        "company": "深圳TCL新技术有限公司",
+        "city": "广东",
+        "salary": "5-6K",
+        "job_skills": [
+          "C++",
+          "Java",
+          "Python",
+          "大模型"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配度高，实习岗位适合",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 472,
+        "title": "测试开发实习生",
+        "company": "惠州市德赛西威汽车电子股份有限公司",
+        "city": "广东",
+        "salary": "3-4K",
+        "job_skills": [
+          "C++",
+          "Git",
+          "Linux",
+          "Python",
+          "自动化测试"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配度高，实习岗位适合",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 20,
+    "resume": "真实-黄振崴-讯飞教育BG-答疑实习生",
+    "candidate": "黄振崴",
+    "resume_skills": [
+      "C语言",
+      "Dreamweaver",
+      "Excel",
+      "Java",
+      "Keras",
+      "OpenCV",
+      "Photoshop",
+      "PowerPoint",
+      "Premiere",
+      "PyTorch",
+      "Python",
+      "React",
+      "TensorFlow",
+      "Word"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 2051,
+        "title": "全栈开发实习生",
+        "company": "重庆菲利信科技有限公司",
+        "city": "重庆",
+        "salary": "2-2K",
+        "job_skills": [
+          "CSS",
+          "Docker",
+          "Flask",
+          "Git",
+          "Java",
+          "Kubernetes",
+          "Linux",
+          "MySQL",
+          "NLP",
+          "PyTorch",
+          "Python",
+          "React",
+          "Redis",
+          "SQL",
+          "TensorFlow",
+          "Vue",
+          "大模型",
+          "机器学习",
+          "深度学习",
+          "算法"
+        ],
+        "match_score": "85.0",
+        "reason": "技能匹配度高，但工作年限略长",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 434,
+        "title": "软件测试工程师",
+        "company": "深圳TCL新技术有限公司",
+        "city": "广东",
+        "salary": "5-6K",
+        "job_skills": [
+          "C++",
+          "Java",
+          "Python",
+          "大模型",
+          "自动化测试"
+        ],
+        "match_score": "80.0",
+        "reason": "技能匹配，但游戏测试经验更佳",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 2118,
+        "title": "测试实习生",
+        "company": "科大讯飞股份有限公司",
+        "city": "安徽",
+        "salary": "3-4K",
+        "job_skills": [],
+        "match_score": "75.0",
+        "reason": "技能匹配，但工作年限略长",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 2242,
+        "title": "测试实习生",
+        "company": "北京雪云锐创科技有限公司",
+        "city": "湖南",
+        "salary": "7-7K",
+        "job_skills": [
+          "Go",
+          "Java",
+          "Python"
+        ],
+        "match_score": "70.0",
+        "reason": "技能匹配，但工作年限略长",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 3368,
+        "title": "测试实习生（27届）",
+        "company": "浩鲸云计算科技股份有限公司",
+        "city": "甘肃",
+        "salary": "2-3K",
+        "job_skills": [
+          "Linux",
+          "Python",
+          "通信"
+        ],
+        "match_score": "65.0",
+        "reason": "技能匹配，但工作年限略长",
+        "relevant": true
+      }
+    ]
+  },
+  {
+    "resume_id": 21,
+    "resume": "真实-黄振葳简历",
+    "candidate": "黄振崴",
+    "resume_skills": [
+      "C语言",
+      "Dreamweaver",
+      "Excel",
+      "Java",
+      "Photoshop",
+      "PowerPoint",
+      "Premiere",
+      "Python",
+      "React",
+      "Word"
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "job_id": 1154,
+        "title": "测试实习生（仅实习）",
+        "company": "北京致远互联软件股份有限公司",
+        "city": "四川",
+        "salary": "4-5K",
+        "job_skills": [
+          "Java",
+          "Python"
+        ],
+        "match_score": "90.0",
+        "reason": "实习要求，技能匹配度高",
+        "relevant": true
+      },
+      {
+        "rank": 2,
+        "job_id": 3586,
+        "title": "测试工程师-校招/实习（J14914）",
+        "company": "北京掌上先机网络科技有限公司",
+        "city": "北京",
+        "salary": "8-12K",
+        "job_skills": [
+          "Java",
+          "Python"
+        ],
+        "match_score": "90.0",
+        "reason": "Python, Java技能匹配，测试经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 3,
+        "job_id": 4590,
+        "title": "测试实习生",
+        "company": "深圳传音控股股份有限公司",
+        "city": "上海",
+        "salary": "4-6K",
+        "job_skills": [
+          "Java",
+          "Python"
+        ],
+        "match_score": "90.0",
+        "reason": "Python, Java技能匹配，测试经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 4,
+        "job_id": 2230,
+        "title": "测试实习生",
+        "company": "北京雪云锐创科技有限公司",
+        "city": "湖南",
+        "salary": "6-7K",
+        "job_skills": [
+          "Go",
+          "Java",
+          "Python"
+        ],
+        "match_score": "90.0",
+        "reason": "Python, Java, Go技能匹配，测试经验丰富",
+        "relevant": true
+      },
+      {
+        "rank": 5,
+        "job_id": 2242,
+        "title": "测试实习生",
+        "company": "北京雪云锐创科技有限公司",
+        "city": "湖南",
+        "salary": "7-7K",
+        "job_skills": [
+          "Go",
+          "Java",
+          "Python"
+        ],
+        "match_score": "90.0",
+        "reason": "Python, Java, Go技能匹配，测试经验丰富",
+        "relevant": true
+      }
+    ]
+  }
+]

@@ -10,8 +10,9 @@
       <router-view v-slot="{ Component, route }">
         <transition name="fade" mode="out-in">
           <!-- keep-alive:缓存列表页等"状态重要"的页面,
-               从详情页返回时保留筛选条件/分页/滚动位置,不重新请求 -->
-          <keep-alive :include="['JobList']">
+               从详情页返回时保留筛选条件/分页/滚动位置,不重新请求。
+               JobRecommend: 点推荐岗位看详情后返回, 保留推荐结果不重新分析 -->
+          <keep-alive :include="['JobList', 'JobRecommend']">
             <component :is="Component" :key="route.fullPath" />
           </keep-alive>
         </transition>

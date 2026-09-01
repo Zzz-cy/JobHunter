@@ -103,3 +103,11 @@ pnpm-debug.log*
 
 # 爬虫产出的数据文件(17MB级, 不进版本库)
 db/data/*.json
+
+# 内部工作文档(总结/比赛资料, 不进版本库)
+总结/
+总结与比赛资料/
+
+# 真实简历(含同学个人信息)与标注答案(含手机号/邮箱), 不进版本库
+evaluation/real/resumes/
+evaluation/real/ground_truth_real.json

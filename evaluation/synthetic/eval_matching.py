@@ -8,10 +8,12 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
+import sys
 
 import httpx
 import pymysql
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # common.py 在 evaluation/
 from common import API_BASE, client, load_db_config, login
 
 EVAL_DIR = Path(__file__).resolve().parent

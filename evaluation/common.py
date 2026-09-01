@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""评测公共工具: 读 .env 配置 + 登录拿 token"""
+"""评测公共工具: 读 .env 配置 + 登录拿 token + 字段比对规则"""
+import re
 import sys
 from pathlib import Path
 
@@ -11,6 +12,31 @@ API_BASE = "http://127.0.0.1:8000"
 # 本机直连客户端: trust_env=False 禁用系统代理(开 Clash 时 httpx 会把
 # 127.0.0.1 请求也代理出去, 导致连不上本地服务/返回非 JSON)
 client = httpx.Client(trust_env=False, timeout=180)
+
+
+def digits(s: str) -> str:
+    return re.sub(r"\D", "", s or "")
+
+
+def compare_field(field: str, gt, got) -> bool:
+    """单个字段比对(合成/真实两套评测共用同一套规则)。
+
+    age/work_years 放宽 ±1, phone 比后 4 位, 其余精确比对。
+    """
+    if got is None:
+        return False
+    if field in ("name", "city", "education"):
+        return str(got).strip() == str(gt).strip()
+    if field == "gender":
+        return int(got) == int(gt)
+    if field in ("age", "work_years"):
+        return abs(int(got) - int(gt)) <= 1
+    if field == "phone":
+        g, p = digits(str(gt)), digits(str(got))
+        return bool(p) and p[-4:] == g[-4:]
+    if field == "email":
+        return str(got).strip().lower() == str(gt).strip().lower()
+    return False
 
 
 def load_db_config() -> dict:

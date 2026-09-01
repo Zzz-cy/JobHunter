@@ -1,8 +1,8 @@
 # 简历解析 Prompt 评测驱动优化记录
 
 > 记录通过「评测 → 分析 → 优化 → 复测」闭环迭代 LLM 简历解析效果的两轮过程。
-> 评测套件：`evaluation/`（10 份标准简历 + 6 份高难度仿真简历，含标准答案）
-> 相关报告：`evaluation/report_parse.md`、`evaluation/report_matching.md`
+> 评测套件：`evaluation/synthetic/`（10 份标准简历 + 6 份高难度仿真简历，含标准答案）
+> 相关报告：`evaluation/synthetic/report_parse.md`、`evaluation/synthetic/report_matching.md`
 
 ---
 

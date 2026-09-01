@@ -91,7 +91,6 @@
             共 <strong>{{ total }}</strong> 个职位
           </span>
           <el-radio-group v-model="sortBy" size="small" @change="handleSortChange">
-            <el-radio-button label="default">综合</el-radio-button>
             <el-radio-button label="latest">最新</el-radio-button>
             <el-radio-button label="salary">薪资</el-radio-button>
           </el-radio-group>
@@ -187,7 +186,7 @@ const jobStore = useJobStore()
 const loading = ref(false)
 const total = ref(0)
 const jobList = ref([])
-const sortBy = ref('default')
+const sortBy = ref('latest')
 
 const filters = reactive({
   keyword: route.query.keyword || '',

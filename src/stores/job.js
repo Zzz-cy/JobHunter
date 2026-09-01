@@ -23,7 +23,7 @@ export const useJobStore = defineStore('job', {
       education: '',
       industry: '',
       source: '',
-      sort: 'default',      // 排序方式: default(综合) / latest(最新) / salary(薪资)
+      sort: 'latest',      // 排序方式: latest(最新) / salary(薪资)
       page: 1,
       pageSize: 10          // 固定每页 10 条(去掉用户切换, 避免 size-change 时序坑)
     },

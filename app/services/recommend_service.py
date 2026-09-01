@@ -154,6 +154,23 @@ def _normalize_skill_score(hit_count: int) -> Decimal:
 
 # ---- LLM 重排 ----
 
+def _stage_scale(resume, title: str, score: float) -> float:
+    """岗位性质与候选人阶段的确定性降权。
+
+    LLM 对"打分不超过xx"这类硬上限经常不执行, 只能代码兜底:
+    - 3年以上社招推到实习/校招岗: 打五折(资历错配, 但保留组内排序)
+    - 完全没经历的学生/应届推到正式岗: 打七五折(优先实习岗)
+    乘法而非封顶, 保住同组内的相对顺序。
+    """
+    wy = resume.work_years or 0
+    is_intern = any(k in (title or "") for k in ("实习", "校招", "应届", "届"))
+    if wy >= 3 and is_intern:
+        return round(score * 0.5, 2)
+    if wy <= 1 and not is_intern and not resume.experiences:
+        return round(score * 0.75, 2)
+    return score
+
+
 async def rerank_with_llm(
     resume: Resume,
     candidates: list[dict],
@@ -182,46 +199,77 @@ async def rerank_with_llm(
             f"要求:{(job.description_text or '')[:60]}"
         )
     jobs_text = "\n".join(job_lines)
+    sample_id = candidates[0]["job"].id
+
+    # 岗位性质匹配: LLM 只看简历摘要判断不了候选人阶段, 年限要显式给
+    wy = resume.work_years
+    wy_text = f"{wy} 年" if wy is not None else "未知"
 
     prompt = f"""你是一个资深技术招聘专家, 请根据候选人简历, 对下面这些候选岗位逐一评估匹配度。
 
 【候选人简历摘要】
 {resume_brief}
 
+【候选人画像】工作年限: {wy_text} (0~1年视为学生/应届, 3年以上视为成熟社招)
+
 【候选岗位列表】
 {jobs_text}
 
 请对每个岗位输出 JSON, 格式为对象数组, 每项包含:
-- job_id: 岗位编号(整数)
+- job_id: 岗位编号(必须原样复制上面【岗位编号:】后面的数字, 严禁自己重新编号)
 - score: 匹配度评分 0~100(整数, 越高越匹配, 考虑技能契合/方向一致/经验层级)
-- reason: 一句话推荐理由(中文, 不超过30字, 说清"为什么这个岗位适合该候选人")
+- reason: 一句话推荐理由(中文, 不超过30字, 只说明匹配原因本身,
+  不要提及评分规则/扣分逻辑/岗位性质错配等内部判断)
+
+评分规则(岗位性质与候选人阶段匹配):
+- 工作年限>=3年(成熟社招): 实习/校招岗属资历错配, 打低分
+- 工作年限0~2年(学生/应届): 简历里有实习/工作经历的可正常推正式岗;
+  完全没经历的优先实习/校招岗, 正式岗打低分
 
 只返回 JSON 数组, 不要任何解释文字。示例:
-[{{"job_id": 1, "score": 92, "reason": "技能高度契合, 5年后端经验完全胜任"}}]"""
+[{{"job_id": {sample_id}, "score": 92, "reason": "技能高度契合, 5年后端经验完全胜任"}}]"""
 
     try:
         result = await achat_json(prompt)
     except BizException:
-        # LLM 抖动: 回退融合分 + 默认理由
-        return {
-            info["job"].id: {
-                "score": float(max(info["skill_score"], info["vector_score"])),
-                "reason": "技能与经验较为匹配",
+        # LLM 偶发抖动: 等一秒重试一次, 再失败才降级
+        # (降级后是未精排的裸分, 排序质量差, 值得多等这一秒)
+        import asyncio
+        await asyncio.sleep(1)
+        try:
+            result = await achat_json(prompt)
+        except BizException:
+            # 彻底失败: 回退融合分 + 默认理由
+            return {
+                info["job"].id: {
+                    "score": _stage_scale(
+                        resume, info["job"].title,
+                        float(max(info["skill_score"], info["vector_score"]))),
+                    "reason": "技能与经验较为匹配",
+                }
+                for info in candidates
             }
-            for info in candidates
-        }
 
     reranked: dict[int, dict] = {}
     fallback_map = {info["job"].id: info for info in candidates}
+    ordered_ids = [info["job"].id for info in candidates]
 
     if isinstance(result, list):
         for item in result:
             try:
                 jid = int(item.get("job_id"))
+                # 模型偶尔不听话返回 1..N 的行号: 对不上真实编号时按位置映射回去
+                if jid not in fallback_map and 1 <= jid <= len(ordered_ids):
+                    jid = ordered_ids[jid - 1]
                 score = float(item.get("score", 0))
                 reason = str(item.get("reason", ""))[:60]  # 限长防撑爆 DB
                 score = max(0.0, min(100.0, score))
-                reranked[jid] = {"score": score, "reason": reason or "技能与经验较为匹配"}
+                if jid in fallback_map:
+                    reranked[jid] = {
+                        "score": _stage_scale(
+                            resume, fallback_map[jid]["job"].title, score),
+                        "reason": reason or "技能与经验较为匹配",
+                    }
             except (ValueError, TypeError, AttributeError):
                 continue  # 单条坏数据跳过
 
@@ -229,7 +277,9 @@ async def rerank_with_llm(
     for jid, info in fallback_map.items():
         if jid not in reranked:
             reranked[jid] = {
-                "score": float(max(info["skill_score"], info["vector_score"])),
+                "score": _stage_scale(
+                    resume, info["job"].title,
+                    float(max(info["skill_score"], info["vector_score"]))),
                 "reason": "技能与经验较为匹配",
             }
 

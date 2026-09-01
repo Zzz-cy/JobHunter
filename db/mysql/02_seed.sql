@@ -26,7 +26,7 @@ ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
 -- ---- 技能字典 ----
 INSERT INTO `skills` (`skill_code`,`name`,`alias`,`category`,`is_hot`) VALUES
 ('SK_PY','Python','py,python3','语言',1),
-('SK_JAVA','Java','java8,jdk','语言',1),
+('SK_JAVA','Java','java,java8,jdk','语言',1),
 ('SK_JS','JavaScript','js,es6','语言',1),
 ('SK_TS','TypeScript','ts','语言',1),
 ('SK_GO','Go','golang','语言',1),
@@ -129,6 +129,27 @@ INSERT INTO `skills` (`skill_code`,`name`,`alias`,`category`,`is_hot`) VALUES
 ('SK_USERRESEARCH','用户研究','user-research','方向',0),
 ('SK_FINANCE','财务分析',NULL,'软技能',0),
 ('SK_OFFICE','Office','office-suite','工具',0)
+ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
+
+-- ---- 技能字典补充(真实简历实测反馈: 词形/别名对不上导致归一化漏匹配) ----
+INSERT INTO `skills` (`skill_code`,`name`,`alias`,`category`,`is_hot`) VALUES
+('SK_CLANG','C语言','c','语言',0),
+('SK_AI','人工智能','AI应用','方向',1),
+('SK_MYBATIS','MyBatis','mybatis-plus','框架',0),
+('SK_JQUERY','jQuery','jq','框架',0),
+('SK_BOOTSTRAP','Bootstrap',NULL,'框架',0),
+('SK_KERAS','Keras',NULL,'框架',0),
+('SK_OPENCV','OpenCV',NULL,'工具',0),
+('SK_UNITY','Unity',NULL,'工具',0),
+('SK_WORD','Word','ms-word','工具',0),
+('SK_PPT','PowerPoint','ppt,power-point','工具',0),
+('SK_PREMIERE','Premiere','adobe premiere pro,pr','工具',0),
+('SK_DREAMWEAVER','Dreamweaver','dw','工具',0),
+('SK_ORACLE','Oracle','oracle数据库','工具',0),
+('SK_SQLSERVER','SQL Server','sqlserver','工具',0),
+('SK_NEURALNET','神经网络','neural-network','方向',0),
+('SK_CAD','CAD',NULL,'工具',0),
+('SK_CHATGPT','ChatGPT','chat-gpt','工具',0)
 ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
 
 -- ---- 测试账号(三个, 密码都是 123456) ----
