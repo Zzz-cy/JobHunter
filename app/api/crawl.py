@@ -129,7 +129,7 @@ async def bootstrap_system():
 
     # 只跑 01+02: 表 + 字典 + 账号 + 求职者A演示简历(在 02 里)。
     # 不跑 03: 纯演示数据(mock 职位/投递), 会污染真实爬虫数据。
-    await asyncio.to_thread(init_mysql, ["01_schema.sql", "02_seed.sql"])
+    await asyncio.to_thread(init_mysql, ["01_schema.sql", "02_seed.sql", "04_llm_module.sql"])
 
     return Result.success(
         data={"initialized": True},

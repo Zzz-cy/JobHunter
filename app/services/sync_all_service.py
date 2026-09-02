@@ -72,7 +72,7 @@ async def _step_mysql() -> str:
     # 不含 03_mock: mock 不幂等, 重复跑数据翻倍
     from scripts.init_storage import init_mysql
     await asyncio.to_thread(
-        init_mysql, ["01_schema.sql", "02_seed.sql"])
+        init_mysql, ["01_schema.sql", "02_seed.sql", "04_llm_module.sql"])
 
     data_path = _DATA_DIR / _sync_state.get("_data_file", _DEFAULT_DATA_FILE)
     with open(data_path, encoding="utf-8") as f:
