@@ -16,7 +16,8 @@ JSON_FILE = ROOT_DIR / "db" / "neo4j" / "jobs.json"
 # 第一次只导入50条测试
 LIMIT = None
 
-uri = "bolt://localhost:7687"
+# 容器/服务器部署时由环境变量指定; 本地开发默认 localhost
+uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 user = "neo4j"
 
 # 优先环境变量(后台/一键同步时由 service 注入, 无终端也不会卡住);

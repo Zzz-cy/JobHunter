@@ -1,0 +1,141 @@
+# JobHunter 一键部署: 前端(nginx) + 主后端 + llm_module + MySQL + ES + Neo4j
+#
+# 用法:
+#   docker compose up -d --build     # 首次构建并启动(约5-10分钟)
+#   curl -X POST http://localhost/crawl/bootstrap   # 初始化四库(建表/种子/导入/ES/向量/图谱)
+#   浏览器打开 http://localhost (云服务器则 http://服务器IP)
+#
+# 镜像走 docker.1ms.run 代理(国内拉 Docker Hub 不稳时); ES 官方镜像走 elastic 官方源,
+# 拉不动就把 deploy/elasticsearch/Dockerfile 里的基础镜像换成可用代理地址。
+
+services:
+  # ---------- 前端(唯一对外端口) ----------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: jh_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - llm
+    restart: unless-stopped
+
+  # ---------- 主后端 FastAPI ----------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jh_backend
+    env_file: .env          # 读密钥/密码(不进 git)
+    environment:
+      # 容器内覆盖: 主机名换成 compose 服务名, 监听 0.0.0.0
+      APP_HOST: "0.0.0.0"
+      APP_DEBUG: "false"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      ES_URL: http://elasticsearch:9200
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-jobhunter123}
+      LLM_SERVICE_URL: http://llm:8001
+    volumes:
+      - ./db/data:/app/db/data:ro     # 爬虫数据文件(bootstrap 导入用)
+      - chroma_data:/app/storage      # ChromaDB 向量持久化
+      - uploads_data:/app/uploads     # 用户上传的简历
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------- llm_module 简历解析服务(复用队友自带 Dockerfile) ----------
+  llm:
+    build:
+      context: ./llm_module
+      dockerfile: Dockerfile
+    container_name: jh_llm
+    env_file: .env          # ZHIPU_API_KEY 等
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8001"
+      DEBUG: "false"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: job_competency   # llm_module 用自己的库, 与主库 jobhunter 隔离
+      ES_HOST: http://elasticsearch:9200
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-jobhunter123}
+      VECTOR_DB_PATH: /app/data/vector_db
+      SQLITE_PATH: /app/data/job_competency.db
+    volumes:
+      - llm_data:/app/data
+      - llm_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    # 注意: 队友 Dockerfile 的健康检查写死 5173 端口, 这里用 8001,
+    # 故本服务不用 service_healthy 依赖, 也不加 healthcheck
+
+  # ---------- MySQL ----------
+  mysql:
+    image: docker.1ms.run/library/mysql:8.0
+    container_name: jh_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-jobhunter123}
+      MYSQL_DATABASE: jobhunter        # 主库
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deploy/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 附带建 job_competency 库
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_PASSWORD:-jobhunter123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---------- Elasticsearch(带 IK 中文分词, 自建镜像) ----------
+  elasticsearch:
+    build:
+      context: ./deploy/elasticsearch
+    container_name: jh_es
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"   # 内网容器间调用, 关闭安全简化部署
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m" # 内存紧张可调小到 256m
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+
+  # ---------- Neo4j(图谱, 内存紧张可整段注释掉, 图谱页自动降级演示数据) ----------
+  neo4j:
+    image: docker.1ms.run/library/neo4j:5-community
+    container_name: jh_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-jobhunter123}
+      NEO4J_PLUGINS: '["apoc"]'         # llm_module 的图谱推理用
+      NEO4J_server_memory_pagecache_size: 256M
+      NEO4J_server_memory_heap_initial__size: 512M
+      NEO4J_server_memory_heap_max__size: 512M
+    volumes:
+      - neo4j_data:/data
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  es_data:
+  neo4j_data:
+  chroma_data:
+  uploads_data:
+  llm_data:
+  llm_logs:

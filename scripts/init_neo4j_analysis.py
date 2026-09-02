@@ -23,7 +23,8 @@ print("找到数据文件：", JSON_FILE)
 # 2. Neo4j配置
 # ==================================================
 
-URI = "bolt://localhost:7687"
+# 容器/服务器部署时由环境变量指定; 本地开发默认 localhost
+URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 USER = "neo4j"
 
 # 优先环境变量(后台/一键同步时由 service 注入, 无终端也不会卡住);

@@ -1,0 +1,19 @@
+# 构建上下文瘦身: 这些不进镜像/不参与构建
+.git
+node_modules
+dist
+storage
+uploads
+db/data            # 运行时 compose 挂载, 不打进镜像
+.venv
+**/__pycache__
+**/*.pyc
+evaluation/**/resumes
+总结
+总结与比赛资料
+logs
+**/*.log
+docker-compose.yml
+.dockerignore
+Dockerfile
+Dockerfile.frontend

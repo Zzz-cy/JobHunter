@@ -153,6 +153,7 @@ async def _step_chroma() -> str:
         tail = (out or b"").decode(errors="replace")[-200:]
         raise RuntimeError(f"向量构建失败: {tail}")
 
+    vector_service._get_collection.cache_clear()
     n = vector_service._get_collection().count()
     return f"向量库{mode}完成: {chroma_count} → {n} 条"
 
