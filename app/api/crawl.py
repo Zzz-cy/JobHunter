@@ -14,20 +14,49 @@ from app.utils.jwtUtil import require_admin
 
 router = APIRouter(prefix="/crawl", tags=["爬虫数据管理"])
 
-# 数据文件路径: backend/db/data/jobs_raw.json
-_DATA_PATH = Path(settings.UPLOAD_DIR).parent / "db" / "data" / "jobs_raw.json"
+# 数据文件目录: backend/db/data/
+_DATA_DIR = Path(settings.UPLOAD_DIR).parent / "db" / "data"
+_DEFAULT_DATA_FILE = "jobs_raw.json"
+
+
+def _resolve_data_file(name: str | None) -> Path:
+    """文件名白名单校验: 只允许 db/data 下的 .json, 防路径穿越。"""
+    name = (name or _DEFAULT_DATA_FILE).strip()
+    if not name.endswith(".json") or Path(name).name != name:
+        raise HTTPException(status_code=400, detail="只能选 db/data 目录下的 .json 文件")
+    path = _DATA_DIR / name
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"数据文件不存在: {name}")
+    return path
+
+
+@router.get("/data-files", response_model=Result[dict], summary="列出可导入的数据文件")
+async def list_data_files(_=Depends(require_admin)):
+    """列出 db/data 下所有 json 文件(前端下拉选择导入源)。"""
+    files = []
+    if _DATA_DIR.exists():
+        for p in sorted(_DATA_DIR.glob("*.json"),
+                        key=lambda x: x.stat().st_mtime, reverse=True):
+            st = p.stat()
+            files.append({
+                "name": p.name,
+                "size_mb": round(st.st_size / 1024 / 1024, 2),
+                "last_modified": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            })
+    return Result.success(data={"files": files, "default": _DEFAULT_DATA_FILE})
 
 
 @router.get("/preview", response_model=Result[dict], summary="预览爬虫数据文件状态")
-async def preview_crawl_data(_=Depends(require_admin)):
+async def preview_crawl_data(file: str | None = None, _=Depends(require_admin)):
     """预览待导入的数据文件(条数/字段填充率), 不入库。需管理员。"""
-    if not _DATA_PATH.exists():
+    data_path = _DATA_DIR / (file or _DEFAULT_DATA_FILE)
+    if not data_path.exists():
         return Result.success(data={
             "exists": False,
-            "message": "数据文件不存在, 请先让爬虫把数据放到 db/data/jobs_raw.json",
+            "message": f"数据文件不存在, 请先让爬虫把数据放到 db/data/{file or _DEFAULT_DATA_FILE}",
         })
 
-    with open(_DATA_PATH, encoding="utf-8") as f:
+    with open(data_path, encoding="utf-8") as f:
         data = json.load(f)
 
     jobs = data.get("jobs", [])
@@ -36,14 +65,14 @@ async def preview_crawl_data(_=Depends(require_admin)):
 
     return Result.success(data={
         "exists": True,
-        "file_name": _DATA_PATH.name,
+        "file_name": data_path.name,
         "crawl_batch": data.get("crawl_batch"),
         "total": len(jobs),
         "website_filled": ws_filled,
         "industry_filled": ind_filled,
-        "file_size_mb": round(_DATA_PATH.stat().st_size / 1024 / 1024, 2),
+        "file_size_mb": round(data_path.stat().st_size / 1024 / 1024, 2),
         "last_modified": datetime.fromtimestamp(
-            _DATA_PATH.stat().st_mtime
+            data_path.stat().st_mtime
         ).strftime("%Y-%m-%d %H:%M:%S"),
     }, message="数据文件就绪")
 
@@ -113,27 +142,27 @@ async def bootstrap_system():
 @router.post("/sync-all", response_model=Result[dict], summary="一键同步所有库")
 async def sync_all_stores(
     background_tasks: BackgroundTasks,
+    payload: dict | None = None,
     _=Depends(require_admin),
 ):
     """
     一键同步四个库(MySQL→ES→ChromaDB→Neo4j), 后台执行立即返回。
+
+    body 可选: {"data_file": "jobs_raw_2.json"} 指定导入源(默认 jobs_raw.json)
     """
     if get_sync_status()["running"]:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="同步任务正在进行中, 请等完成后再触发",
         )
-    if not _DATA_PATH.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"数据文件不存在: {_DATA_PATH.name}, 请先让爬虫产出数据",
-        )
+    data_file = (payload or {}).get("data_file") or None
+    _resolve_data_file(data_file)   # 白名单校验(不存在直接 404)
 
     # 跑在主事件循环(BackgroundTasks), 无跨循环问题
-    background_tasks.add_task(run_sync_all)
+    background_tasks.add_task(run_sync_all, data_file)
     return Result.success(
         data=get_sync_status(),
-        message="全库同步已启动(约2-5分钟), 完成后所有库数据就绪",
+        message=f"全库同步已启动(数据源: {data_file or _DEFAULT_DATA_FILE}, 约2-5分钟)",
     )
 
 

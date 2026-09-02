@@ -29,7 +29,6 @@
           <template #header>
             <div class="chart-title">
               <span>新兴技能发现</span>
-              <el-tag size="small" type="warning" effect="plain">候选待转正</el-tag>
             </div>
           </template>
           <div v-if="!emerging.candidates.length" class="emerging-empty">
@@ -400,7 +399,8 @@ const renderTrendChart = async () => {
   const data = await request.get('/stats/job-trend')
   const option = {
     tooltip: { trigger: 'axis' },
-    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    // 右侧留白要能容纳末位月份标签的一半(标签以刻度为中心, 一半在画布外)
+    grid: { left: 50, right: 45, top: 30, bottom: 30, containLabel: true },
     xAxis: {
       type: 'category',
       boundaryGap: false,
@@ -633,6 +633,15 @@ onBeforeUnmount(() => {
   align-items: center;
   font-weight: 600;
   color: #303133;
+}
+
+/* 卡片标题右侧的用户向说明小字 */
+.chart-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: #909399;
+  text-align: right;
+  flex-shrink: 1;
 }
 
 .trend-controls {

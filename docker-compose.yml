@@ -4,9 +4,6 @@
 #   docker compose up -d --build     # 首次构建并启动(约5-10分钟)
 #   curl -X POST http://localhost/crawl/bootstrap   # 初始化四库(建表/种子/导入/ES/向量/图谱)
 #   浏览器打开 http://localhost (云服务器则 http://服务器IP)
-#
-# 镜像走 docker.1ms.run 代理(国内拉 Docker Hub 不稳时); ES 官方镜像走 elastic 官方源,
-# 拉不动就把 deploy/elasticsearch/Dockerfile 里的基础镜像换成可用代理地址。
 
 services:
   # ---------- 前端(唯一对外端口) ----------
@@ -72,6 +69,9 @@ services:
     volumes:
       - llm_data:/app/data
       - llm_logs:/app/logs
+      # 关键: 与 backend 共享简历上传目录。主后端解析时给 llm 发的是
+      # 容器内绝对路径(/app/uploads/resumes/xxx.pdf), 不共享卷 llm 容器读不到
+      - uploads_data:/app/uploads
     depends_on:
       mysql:
         condition: service_healthy

@@ -231,8 +231,7 @@ onMounted(() => {
 }
 
 .resume-select {
-  width: 100%;
-  max-width: 520px;
+  width: 100%;   /* 占满卡片整行, 不再只露一小条 */
 }
 
 .resume-option {

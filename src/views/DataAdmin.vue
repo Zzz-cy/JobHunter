@@ -5,17 +5,32 @@
       <template #header>
         <div class="card-title">
           <span>待导入数据文件</span>
-          <el-button text @click="loadPreview">
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </el-button>
+          <div class="file-picker">
+            <el-select
+              v-model="selectedFile"
+              size="small"
+              class="file-select"
+              @change="loadPreview"
+            >
+              <el-option
+                v-for="f in dataFiles"
+                :key="f.name"
+                :value="f.name"
+                :label="`${f.name} (${f.size_mb}MB)`"
+              />
+            </el-select>
+            <el-button text @click="loadAll">
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </el-button>
+          </div>
         </div>
       </template>
 
       <div v-if="!preview.exists" class="empty-state">
         <el-empty description="数据文件不存在">
           <p class="empty-hint">
-            请让爬虫把数据放到 <code>db/data/jobs_raw.json</code>
+            请让爬虫把数据放到 <code>db/data/</code> 目录(json 格式)
           </p>
         </el-empty>
       </div>
@@ -53,7 +68,8 @@
         show-icon
       >
         <template #title>
-          点击「一键同步所有库」依次完成: MySQL 导入 → ES 同步 → 向量库 → 知识图谱。
+          数据源: <b>{{ selectedFile }}</b>。点击「一键同步所有库」依次完成:
+          MySQL 导入 → ES 同步 → 向量库 → 知识图谱。
           某个库未启动只标记该步失败, 不影响其他库。
         </template>
       </el-alert>
@@ -108,6 +124,22 @@ import request from '@/utils/request'
 const loadingPreview = ref(false)
 const preview = ref({ exists: false })
 
+// ---------- 数据文件选择 ----------
+const dataFiles = ref([])
+const selectedFile = ref('jobs_raw.json')
+
+const loadFiles = async () => {
+  try {
+    const res = await request.get('/crawl/data-files')
+    dataFiles.value = res.files
+    // 默认文件不在列表里(被改名/没生成)时回退到列表第一个
+    if (res.files.length && !res.files.some(f => f.name === selectedFile.value)) {
+      selectedFile.value = res.default && res.files.some(f => f.name === res.default)
+        ? res.default : res.files[0].name
+    }
+  } catch (e) { /* 静默 */ }
+}
+
 // ---------- 一键全库同步 ----------
 const syncAll = ref({ running: false, steps: [] })
 let syncTimer = null
@@ -126,8 +158,8 @@ const loadSyncStatus = async () => {
 
 const handleSyncAll = async () => {
   try {
-    const res = await request.post('/crawl/sync-all')
-    ElMessage.success('全库同步已启动(约2-5分钟)')
+    const res = await request.post('/crawl/sync-all', { data_file: selectedFile.value })
+    ElMessage.success(`全库同步已启动(数据源: ${selectedFile.value}, 约2-5分钟)`)
     syncAll.value = res
     if (syncTimer) clearInterval(syncTimer)
     syncTimer = setInterval(loadSyncStatus, 5000)
@@ -142,7 +174,7 @@ onBeforeUnmount(() => {
 const loadPreview = async () => {
   loadingPreview.value = true
   try {
-    const res = await request.get('/crawl/preview')
+    const res = await request.get('/crawl/preview', { params: { file: selectedFile.value } })
     preview.value = res
   } catch (e) {
     // 接口失败时保持空状态
@@ -151,8 +183,13 @@ const loadPreview = async () => {
   }
 }
 
+const loadAll = async () => {
+  await loadFiles()
+  await loadPreview()
+}
+
 onMounted(() => {
-  loadPreview()
+  loadAll()
   loadSyncStatus()   // 刷新页面也能看到进行中的同步进度
 })
 </script>
@@ -204,6 +241,16 @@ onMounted(() => {
   align-items: center;
   font-weight: 600;
   color: #303133;
+}
+
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.file-select {
+  width: 260px;
 }
 
 .empty-state {

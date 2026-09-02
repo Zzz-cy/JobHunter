@@ -252,6 +252,13 @@ const doUpload = async () => {
       resetUpload()
     } else if (parseStatus.value === 'failed') {
       parseError.value = resumeStore.parseError
+      // 失败也要刷新列表(失败记录要显示出来, 可重新解析/删除)
+      await refreshList()
+      // 失败要释放上传区: 清掉待传文件, 让用户能选下一份
+      // (el-upload limit=1 没有移除按钮, 不清就被旧文件占死)
+      pendingFile.value = null
+      fileList.value = []
+      uploadRef.value?.clearFiles()
     }
   } finally {
     uploading.value = false
@@ -300,8 +307,13 @@ const handleCommand = async (cmd, r) => {
     ElMessage.success('已设为默认简历')
     await refreshList()
   } else if (cmd === 'reparse') {
-    await request.post(`/resumes/${r.id}/reparse`)
-    ElMessage.success('已提交重新解析')
+    const res = await request.post(`/resumes/${r.id}/reparse`)
+    await refreshList()   // 刷新列表让新状态(成功/失败)立刻可见
+    if (res.parse_status === 'done') {
+      ElMessage.success('重新解析成功')
+    } else {
+      ElMessage.warning(res.parse_error || '重新解析失败, 可稍后重试')
+    }
   } else if (cmd === 'delete') {
     try {
       await ElMessageBox.confirm('确定要删除这份简历吗?删除后无法恢复', '提示', {

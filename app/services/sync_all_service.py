@@ -12,7 +12,8 @@ from pathlib import Path
 from app.core.config import settings
 
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
-_JOBS_RAW_PATH = _BACKEND_DIR / "db" / "data" / "jobs_raw.json"
+_DATA_DIR = _BACKEND_DIR / "db" / "data"
+_DEFAULT_DATA_FILE = "jobs_raw.json"
 
 # 全局状态(前端轮询读)
 _sync_state: dict = {
@@ -73,7 +74,8 @@ async def _step_mysql() -> str:
     await asyncio.to_thread(
         init_mysql, ["01_schema.sql", "02_seed.sql"])
 
-    with open(_JOBS_RAW_PATH, encoding="utf-8") as f:
+    data_path = _DATA_DIR / _sync_state.get("_data_file", _DEFAULT_DATA_FILE)
+    with open(data_path, encoding="utf-8") as f:
         data = json.load(f)
 
     from sqlalchemy import text
@@ -100,7 +102,7 @@ async def _step_mysql() -> str:
                 ) top
             )
         """))
-    return f"导入 {len(data.get('jobs', []))} 条(已存在的自动跳过), 热门技能已重算"
+    return f"从 {data_path.name} 导入 {len(data.get('jobs', []))} 条(已存在的自动跳过), 热门技能已重算"
 
 
 async def _step_es() -> str:
@@ -174,8 +176,13 @@ def _step_neo4j_sync() -> str:
 
 # ---------- 主流程 ----------
 
-async def run_sync_all() -> None:
-    """依次执行四步同步。每步独立 try, 失败不断流。"""
+async def run_sync_all(data_file: str | None = None) -> None:
+    """依次执行四步同步。每步独立 try, 失败不断流。
+
+    data_file: db/data 下的数据文件名(默认 jobs_raw.json), 由接口校验过白名单。
+    """
+    data_file = data_file or _DEFAULT_DATA_FILE
+    _sync_state["_data_file"] = data_file
     _sync_state.update(
         running=True, started_at=datetime.now().isoformat(timespec="seconds"),
         finished_at=None, message="",
@@ -184,11 +191,12 @@ async def run_sync_all() -> None:
     failed = []
 
     # ---- 前置: 数据文件必须存在 ----
-    if not _JOBS_RAW_PATH.exists():
+    data_path = _DATA_DIR / data_file
+    if not data_path.exists():
         _sync_state.update(
             running=False,
             finished_at=datetime.now().isoformat(timespec="seconds"),
-            message=f"数据文件不存在: {_JOBS_RAW_PATH}",
+            message=f"数据文件不存在: {data_path}",
         )
         return
 
