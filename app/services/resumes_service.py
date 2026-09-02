@@ -5,13 +5,14 @@ from typing import List
 
 import httpx
 from fastapi import UploadFile
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import ParamError
 from app.models import Resume, ResumeExperience, ResumeEducation, ResumeSkill, Skill
 from app.utils.emergingUtil import record_unknown_skills
+from app.utils.skillDictUtil import find_skill
 from app.utils.codeUtil import generate_code
 
 # 允许的文件类型(MIME 类型 -> 简历来源类型)
@@ -188,19 +189,10 @@ async def find_skill_by_name(db: AsyncSession, name: str) -> Skill | None:
     """在 skills 字典表查技能, 支持别名归一。
 
     LLM 抽取的可能是 "Python3" "Py" 等别名, 要映射到标准技能。
-    匹配优先级: 标准名 > alias 字段(逗号分隔)。
+    匹配优先级: 标准名 > alias 字段(逗号拆分后逐词精确匹配, 不用 LIKE,
+    避免查 "Go" 误中 alias 含 "django" 这类子串误伤)。
     """
-    if not name:
-        return None
-    name_lower = name.lower().strip()
-    stmt = select(Skill).where(
-        or_(
-            func.lower(Skill.name) == name_lower,
-            # alias 存的是 "py,python3,python3.x" 这种逗号分隔字符串
-            func.lower(Skill.alias).like(f"%{name_lower}%"),
-        )
-    )
-    return await db.scalar(stmt)
+    return await find_skill(db, name)
 
 
 # 数据入库

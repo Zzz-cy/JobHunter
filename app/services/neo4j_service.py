@@ -54,7 +54,8 @@ class Neo4jService:
                 "COMMON_EXPERIENCE",
                 "COMMON_SALARY",
                 "COMMON_BENEFIT",
-                "SIMILAR_TO"
+                "SIMILAR_TO",
+                "DEMANDS"
             ]
 
             RETURN
@@ -90,6 +91,7 @@ class Neo4jService:
         }
 
         groups = {
+            "skills": [],
             "popular_cities": [],
             "education": [],
             "experience": [],
@@ -99,6 +101,7 @@ class Neo4jService:
         }
 
         relation_map = {
+            "DEMANDS": ("skills", "核心技能"),
             "POPULAR_IN": ("popular_cities", "热门城市"),
             "COMMON_EDUCATION": ("education", "常见学历"),
             "COMMON_EXPERIENCE": ("experience", "常见经验"),
@@ -155,6 +158,7 @@ class Neo4jService:
             )
 
         limits = {
+            "skills": 5,
             "popular_cities": 3,
             "education": 2,
             "experience": 3,
@@ -203,6 +207,16 @@ class Neo4jService:
                 )
 
         value_parts = []
+
+        if groups["skills"]:
+            skills = "、".join(
+                item["name"]
+                for item in groups["skills"]
+            )
+
+            value_parts.append(
+                f"核心技能包括{skills}"
+            )
 
         if groups["popular_cities"]:
             cities = "、".join(

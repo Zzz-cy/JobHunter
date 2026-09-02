@@ -1,7 +1,7 @@
 """爬虫 JSON 数据导入 MySQL。
 
 公司 upsert(有则补空字段, 无则新建) → 职位按 (source, source_id) 去重新建 →
-技能按 name 精确匹配关联 → 单事务提交, 中途失败全回滚。
+技能按字典归一(标准名+别名)关联 → 单事务提交, 中途失败全回滚。
 """
 import datetime
 from typing import Any
@@ -10,9 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Company, Job, JobSkill, Skill
+from app.models import Company, Job, JobSkill
 from app.utils.codeUtil import generate_code
 from app.utils.emergingUtil import record_unknown_skills
+from app.utils.skillDictUtil import find_skills
 
 
 # 行业归一化: 爬虫的中文细字符串 → industries 表大类 code
@@ -150,25 +151,33 @@ async def _link_skills(
     job_id: int,
     raw_skills: list,
 ):
-    """raw_skills 按 name 精确匹配 skills 表, 命中写 job_skills,
-    未命中记入 emerging_skills 候选表(不再丢弃, 供新兴技能发现)。"""
+    """
+    raw_skills 经字典归一(标准名+别名)后命中写 job_skills,
+    真正字典外的词才记入 emerging_skills 候选表(不再丢弃, 供新兴技能发现)。
+    别名感知: 爬虫标签里的 "Vue.js" 能归一到字典里的 "Vue",
+    """
     if not raw_skills:
         return
 
-    # 一次查出所有命中, 避免 N+1
-    skills = (await db.scalars(
-        select(Skill).where(Skill.name.in_(raw_skills))
-    )).all()
+    # 一次查全表, 内存里逐词归一(标准名 > 别名, 不区分大小写)
+    hits = await find_skills(db, [str(n) for n in raw_skills])
 
-    for skill in skills:
+    # 多个原始词可能归一到同一技能("Vue"+"Vue.js"), 按 skill_id 去重
+    seen_skill_ids: set[int] = set()
+    for skill in hits.values():
+        if skill.id in seen_skill_ids:
+            continue
+        seen_skill_ids.add(skill.id)
         db.add(JobSkill(
             job_id=job_id,
             skill_id=skill.id,
         ))
 
-    # 字典外的词 → 候选表
-    hit_names = {s.name for s in skills}
-    unknown = [n for n in raw_skills if n.strip() and n.strip() not in hit_names]
+    # 真正字典外的词 → 候选表
+    unknown = [
+        n.strip() for n in raw_skills
+        if n and n.strip() and n.strip() not in hits
+    ]
     if unknown:
         await record_unknown_skills(db, unknown)
 

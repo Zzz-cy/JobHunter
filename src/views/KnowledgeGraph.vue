@@ -27,6 +27,23 @@
           <span class="kg-tag" v-if="fromMock">⚠ 演示数据(后端不可用)</span>
           <span class="kg-tag ok" v-else>✓ Neo4j 实时数据</span>
           <span class="kg-meta">{{ graphNodes.length }} 节点 · {{ graphLinks.length }} 关系</span>
+          <el-select
+            v-if="!fromMock"
+            v-model="selectedRelations"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            placeholder="关系筛选"
+            class="kg-filter"
+            @change="applyFilter"
+          >
+            <el-option
+              v-for="r in RELATION_OPTIONS"
+              :key="r.value"
+              :value="r.value"
+              :label="r.label"
+            />
+          </el-select>
         </div>
 
         <!-- 图谱 -->
@@ -97,6 +114,7 @@ const mockCategories = ['AI核心', '学习方法', '应用领域', '网络架�
 // Neo4j 节点类型 → 中文分类名
 const TYPE_LABELS = {
   JobDirection: '岗位方向',
+  Skill: '核心技能',
   City: '热门城市',
   Education: '学历要求',
   Experience: '经验要求',
@@ -106,6 +124,17 @@ const TYPE_LABELS = {
   Similar: '相似方向',
 }
 const typeLabel = (t) => TYPE_LABELS[t] || t || '其他'
+
+// 关系类型筛选(边按关系分组, 用户勾选哪几类就画哪几类)
+const RELATION_OPTIONS = [
+  { value: 'DEMANDS', label: '核心技能' },
+  { value: 'SIMILAR_TO', label: '相似方向' },
+  { value: 'POPULAR_IN', label: '热门城市' },
+  { value: 'COMMON_EDUCATION', label: '学历要求' },
+  { value: 'COMMON_EXPERIENCE', label: '经验要求' },
+  { value: 'COMMON_SALARY', label: '薪资分布' },
+  { value: 'COMMON_BENEFIT', label: '常见福利' },
+]
 
 // 状态
 const chartRef = ref(null)
@@ -118,6 +147,12 @@ const summary = ref('')           // 一句话画像(user_value)
 const graphNodes = ref([])
 const graphLinks = ref([])
 const categories = ref([])        // 分类名数组
+
+// 接口原始数据(筛选前的全量), 筛选只动展示层不动源数据
+const rawCenter = ref({})
+const rawNodes = ref([])
+const rawEdges = ref([])
+const selectedRelations = ref(['DEMANDS', 'SIMILAR_TO'])   // 默认只看技能+相似方向, 图不糊
 
 let chartInstance = null
 
@@ -153,41 +188,12 @@ async function fetchGraphData() {
     // request 已拆壳, 拿到的就是业务数据
     const data = await get('/knowledge-graph/direction', { params: { keyword: keyword.value } })
 
-    const center = data.center || {}
-    const rawNodes = data.nodes || []
-    const rawEdges = data.edges || []
-
-    // 节点:中心大圆,其余按关系占比微调大小
-    graphNodes.value = rawNodes.map((n) => ({
-      id: n.id,
-      name: n.name,
-      category: typeLabel(n.type),
-      symbolSize: n.id === center.id ? 60 : 36,
-      _props: {
-        岗位数: n.total_jobs,
-        平均薪资K: n.salary_avg_k,
-      },
-    }))
-
-    graphLinks.value = rawEdges.map((e) => ({
-      source: e.source,
-      target: e.target,
-      label: e.label,
-    }))
-
-    // 分类:按节点 type 去重(中心方向排最前)
-    const seen = new Set()
-    categories.value = []
-    rawNodes.forEach((n) => {
-      const label = typeLabel(n.type)
-      if (!seen.has(label)) {
-        seen.add(label)
-        categories.value.push(label)
-      }
-    })
-
+    rawCenter.value = data.center || {}
+    rawNodes.value = data.nodes || []
+    rawEdges.value = data.edges || []
     summary.value = data.user_value || ''
     fromMock.value = false
+    applyFilter()
   } catch (err) {
     console.warn('[KnowledgeGraph] 图谱数据获取失败,使用模拟数据:', err)
     graphNodes.value = mockNodes
@@ -195,10 +201,55 @@ async function fetchGraphData() {
     categories.value = mockCategories
     summary.value = ''
     fromMock.value = true
+    renderChart()
   } finally {
     loading.value = false
-    renderChart()
   }
+}
+
+// 按勾选的关系类型过滤边 → 只保留有边相连的节点 → 重绘
+function applyFilter() {
+  if (fromMock.value) {
+    renderChart()
+    return
+  }
+  const center = rawCenter.value
+  const keptEdges = rawEdges.value.filter((e) => selectedRelations.value.includes(e.type))
+
+  const usedIds = new Set([center.id])
+  keptEdges.forEach((e) => { usedIds.add(e.source); usedIds.add(e.target) })
+  const keptNodes = rawNodes.value.filter((n) => usedIds.has(n.id))
+
+  // 节点:中心大圆,其余按关系占比微调大小
+  graphNodes.value = keptNodes.map((n) => ({
+    id: n.id,
+    name: n.name,
+    category: typeLabel(n.type),
+    symbolSize: n.id === center.id ? 60 : 36,
+    _props: {
+      岗位数: n.total_jobs,
+      平均薪资K: n.salary_avg_k,
+    },
+  }))
+
+  graphLinks.value = keptEdges.map((e) => ({
+    source: e.source,
+    target: e.target,
+    label: e.label,
+  }))
+
+  // 分类:按节点 type 去重(中心方向排最前)
+  const seen = new Set()
+  categories.value = []
+  keptNodes.forEach((n) => {
+    const label = typeLabel(n.type)
+    if (!seen.has(label)) {
+      seen.add(label)
+      categories.value.push(label)
+    }
+  })
+
+  renderChart()
 }
 
 // 渲染
@@ -377,6 +428,12 @@ onBeforeUnmount(() => {
 .kg-meta {
   color: #999;
   font-size: 12px;
+}
+
+/* 关系类型筛选(工具栏整体 pointer-events:none, 下拉框单独恢复可点) */
+.kg-filter {
+  width: 200px;
+  pointer-events: auto;
 }
 
 /* 图表区域 */

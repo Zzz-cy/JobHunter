@@ -1,15 +1,28 @@
 """
 新兴技能转正服务
 
-转正：把技能加入技能字典，同步es的技能，在对应工作里加上技能。
+转正三段式判定:
+  1. 规则层: 标准名/别名精确匹配(零开销)
+  2. 召回层: 字符串相似度捞 TopK 候选(零开销)
+  3. 精判层: LLM 判断是否某候选技能的别名, 输出强制落候选集(幻觉校验)
+判定为别名 → 归并进老技能(补 alias + 回溯关联); 判定为新词 → 进字典,
+同步es的技能，在对应工作里加上技能。
 
 """
+import json
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.es import es_client, JOBS_INDEX
 from app.models import EmergingSkill, Job, JobSkill, Resume, ResumeSkill, Skill
 from app.utils.codeUtil import generate_code
+from app.utils.skillDictUtil import (
+    alias_tokens,
+    load_all_skills,
+    match_skill_in_list,
+    recall_similar_skills,
+)
 
 
 async def _retro_jobs(db: AsyncSession, skill: Skill, name: str) -> int:
@@ -82,29 +95,99 @@ async def _retro_resumes(db: AsyncSession, skill: Skill, name: str) -> int:
     return len(hit_ids) - len(existing & set(hit_ids))
 
 
+async def _llm_judge_alias(name: str, candidates: list[Skill]) -> Skill | None:
+    """LLM 精判: 新词是否某个候选技能的别名/同一技术的不同写法。
+
+    幻觉校验: 返回的技能名必须落在候选集内, 越界一律按新技能处理。
+    LLM 调用失败同样按新技能处理, 保底。
+    """
+    from app.core.llm import achat_json
+
+    options = [c.name for c in candidates]
+    prompt = f"""判断技能词 "{name}" 是否是下列候选技能中某一个的别名(同一技术的不同写法)。
+
+候选技能: {json.dumps(options, ensure_ascii=False)}
+
+判断标准:
+- 指向同一种技术才算别名, 如 K8s = Kubernetes、sklearn = scikit-learn、Vue.js = Vue
+- 只是相关但不是同一技术的不算, 如 Vue 和 Vuex、Java 和 JavaScript、MySQL 和 SQL
+
+只输出 JSON, 不要其他内容: {{"match": "候选技能名"}} 或 {{"match": null}}"""
+
+    try:
+        data = await achat_json(prompt)
+    except Exception:
+        return None   # LLM 挂了: 降级按新技能处理
+
+    hit = data.get("match") if isinstance(data, dict) else None
+    if not hit:
+        return None
+    for c in candidates:   # 输出校验: 必须落在候选集内
+        if c.name == hit:
+            return c
+    return None
+
+
+def _append_alias(skill: Skill, name: str) -> None:
+    """把新词补进老技能的 alias(若未收录), 字典越转越厚。"""
+    key = name.strip().lower()
+    if key == (skill.name or "").strip().lower():
+        return
+    tokens = alias_tokens(skill.alias)
+    if key in tokens:
+        return
+    skill.alias = f"{skill.alias},{name.strip()}" if skill.alias else name.strip()
+
+
 async def adopt_emerging_skills(db: AsyncSession, names: list[str]) -> dict:
     """批量转正候选技能。
 
+    每个词先走"规则 → 召回 → LLM精判"三段式:
+    判定为老技能别名的归并进老技能(不新建, 回溯关联挂到老技能上);
+    判定为真新词的才新建技能。
+
     Returns:
-        {"results": [{"name", "jobs_linked", "resumes_linked"}], ...}
+        {"results": [{"name", "jobs_linked", "resumes_linked", "note"?}, ...]}
     """
+    all_skills = await load_all_skills(db)   # 全字典只查一次, 循环内复用
+
     results = []
     for name in names:
         name = name.strip()
         if not name:
             continue
 
-        skill = await db.scalar(select(Skill).where(Skill.name == name))
+        # 第 1 层: 规则匹配(标准名/别名精确, 零开销)
+        skill = match_skill_in_list(name, all_skills)
+        merged = False
+
+        # 第 2+3 层: 规则未命中 → 相似度召回 TopK → LLM 精判是否别名
+        if skill is None:
+            candidates = recall_similar_skills(name, all_skills)
+            if candidates:
+                judged = await _llm_judge_alias(name, candidates)
+                if judged:
+                    skill = judged
+                    merged = True
+
         if skill:
+            _append_alias(skill, name)
+            await db.flush()
+            # 回溯挂到老技能: JD/简历里提到这个词的, 关联到老技能
+            jobs_n = await _retro_jobs(db, skill, name)
+            resumes_n = await _retro_resumes(db, skill, name)
             await _mark_adopted(db, name)
-            results.append({"name": name, "jobs_linked": 0, "resumes_linked": 0,
-                            "note": "字典已存在, 仅标记"})
+            note = (f"归并为「{skill.name}」的别名" if merged
+                    else "字典已存在(或命中别名), 已归并")
+            results.append({"name": name, "jobs_linked": jobs_n,
+                            "resumes_linked": resumes_n, "note": note})
             continue
 
-        # 进字典
+        # 真新词: 进字典
         skill = Skill(skill_code=generate_code("SK"), name=name)
         db.add(skill)
         await db.flush()   # 拿自增 id
+        all_skills.append(skill)   # 同批次后面的词也能匹配到它
 
         # 回溯职位/简历
         jobs_n = await _retro_jobs(db, skill, name)
