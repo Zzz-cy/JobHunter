@@ -20,6 +20,22 @@ except ImportError:
 
 from utils.config import VECTOR_DB_CONFIG
 
+# Chroma 默认 ONNX embedding(all-MiniLM-L6-v2)首次使用会从外网下载 ~79MB 模型,
+# 下载是同步的会阻塞 asyncio 事件循环 —— 实测本地容器下载卡在 ~68KB/s 导致整个 llm 服务冻结、
+# 所有 /agents/* 接口超时(用户侧表现为"处理耗时过长/历史会话报错")。
+# 修法: 把模型缓存目录改到持久卷 /app/data(llm_data volume), 预热一次后重启/重建不再联网下载。
+try:
+    if CHROMADB_AVAILABLE:
+        from pathlib import Path as _Path
+        from chromadb.utils.embedding_functions import onnx_mini_lm_l6_v2 as _onnx_ef
+        _cache_dir = _Path(
+            os.environ.get("CHROMA_ONNX_CACHE", "/app/data/.cache/chroma/onnx_models/all-MiniLM-L6-v2")
+        )
+        _onnx_ef.ONNXMiniLM_L6_V2.DOWNLOAD_PATH = _cache_dir
+        logger.info(f"Chroma ONNX 模型缓存目录: {_cache_dir}")
+except Exception as e:
+    logger.warning(f"设置 Chroma ONNX 缓存目录失败: {e}")
+
 
 @dataclass
 class Document:

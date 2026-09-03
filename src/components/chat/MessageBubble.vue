@@ -5,6 +5,8 @@
       <div class="message-content" v-html="formattedAnswer"></div>
       <AgentTags v-if="msg.tasks && msg.tasks.length" :tasks="msg.tasks" />
       <ThinkingProcess v-if="msg.intent && msg.intent.intent" :intent="msg.intent" :tasks="msg.tasks" />
+      <!-- 结构化岗位卡片:回答旁路附带(推荐/匹配),点击可跳岗位详情 -->
+      <RecommendedJobs v-if="recommendedJobs.length" :jobs="recommendedJobs" />
     </div>
   </div>
 </template>
@@ -13,10 +15,13 @@
 import { computed } from 'vue'
 import AgentTags from './AgentTags.vue'
 import ThinkingProcess from './ThinkingProcess.vue'
+import RecommendedJobs from './RecommendedJobs.vue'
 
 const props = defineProps({
   msg: { type: Object, required: true },
 })
+
+const recommendedJobs = computed(() => (props.msg.recommended_jobs || []).slice(0, 6))
 
 function escapeHtml(text) {
   const div = document.createElement('div')

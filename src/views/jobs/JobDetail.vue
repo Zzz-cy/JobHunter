@@ -25,6 +25,18 @@
           </div>
 
           <div class="job-actions">
+            <!-- 从 AI 顾问卡片跳进来时, 提供"返回 AI 顾问": 顾问会话状态是模块级单例, 返回后原对话/卡片仍在 -->
+            <el-button v-if="fromConsultant" type="primary" plain size="large" @click="backToConsultant">
+              <el-icon style="vertical-align: -2px;"><Back /></el-icon>
+              <span style="margin-left: 4px;">返回 AI 顾问</span>
+            </el-button>
+
+            <!-- 问顾问: 跳 AI 求职顾问并自动带该岗位上下文, 让顾问针对这条 JD 分析匹配度 -->
+            <el-button type="warning" size="large" @click="askConsultant">
+              <el-icon style="vertical-align: -2px;"><ChatDotRound /></el-icon>
+              <span style="margin-left: 4px;">问顾问</span>
+            </el-button>
+
             <el-button
               :type="isFavorited ? 'warning' : 'default'"
               size="large"
@@ -282,6 +294,20 @@ const goExternalApply = async () => {
   }
   ElMessage.info('即将跳转到原网站...')
   window.open(job.value.source_url, '_blank', 'noopener')
+}
+
+// 问顾问: 跳到 AI 顾问页(/recommend)并带当前岗位 id, 由 ChatView 自动发起带 context 的咨询
+// 未登录会先被路由守卫送到登录页, 登录后带 redirect 跳回并自动发起
+const askConsultant = () => {
+  router.push({ path: '/recommend', query: { job: route.params.id } })
+}
+
+// 从 AI 顾问的岗位卡片跳进来(?from=consultant)才显示"返回 AI 顾问";
+// 顾问会话状态模块级保留, 直接回 /recommend 即可接着原对话看卡片
+const fromConsultant = computed(() => route.query.from === 'consultant')
+
+const backToConsultant = () => {
+  router.push('/recommend')
 }
 
 // 切换投递状态:没投 → 标记已投递;已投 → 取消投递

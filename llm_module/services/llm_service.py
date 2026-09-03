@@ -17,7 +17,8 @@ from datetime import datetime, timedelta
 
 from utils.config import (
     ZHIPU_CONFIG, FALLBACK_CONFIGS, XFYUN_CONFIG,
-    ZHIPU_MODELS, MODEL_ROUTER, FALLBACK_STRATEGY,
+    ZHIPU_MODELS, ALL_MODELS, EXTRA_MODELS, resolve_model_endpoint,
+    MODEL_ROUTER, FALLBACK_STRATEGY,
     LLM_CONFIG as _LLM_CONFIG,  # 兼容旧版
     COST_BUDGET_CONFIG,
 )
@@ -85,12 +86,15 @@ class ModelRouter:
         self._current_month: str = datetime.now().strftime("%Y-%m")
         self._budget_degraded: bool = False  # 是否因预算限制已降级
 
-    def get_model_config(self, task_type: str = "default") -> Dict[str, Any]:
+    def get_model_config(self, task_type: str = "default",
+                         override: Optional[str] = None) -> Dict[str, Any]:
         """
         根据任务类型获取模型配置（含成本预算检查和动态路由）
 
         Args:
             task_type: 任务类型，如 "intent_classification", "report_generation" 等
+            override: 管理员后台设定的平台默认模型名(在 ZHIPU_MODELS 内才生效)。
+                      只覆盖生成/分析类任务; intent_classification 等轻任务仍走廉价路由省钱。
 
         Returns:
             模型配置字典
@@ -136,15 +140,19 @@ class ModelRouter:
 
         # 检查主模型是否可用
         primary_model = router_config["primary"]
+        # 管理员后台设定的平台默认模型: 覆盖生成/分析类任务(意图/工具选择等轻任务仍走廉价路由省钱)
+        # 覆盖值可为智谱 glm-* 或已配 key 的跨厂商模型(deepseek-chat / moonshot-v1-8k / ...)
+        if override and task_type != "intent_classification" and override in ALL_MODELS:
+            primary_model = override
         if self._is_model_available(primary_model):
             model = primary_model
         else:
-            # 降级到备选模型
+            # 降级到备选模型(仍是智谱名, 保证兜底永远可用)
             model = router_config.get("fallback", "glm-4-flash")
             logger.warning(f"模型降级: {task_type} 从 {primary_model} 降级到 {model}")
 
-        # 获取模型详细信息
-        model_info = ZHIPU_MODELS.get(model, {})
+        # 获取模型详细信息(跨厂商模型信息也在全量目录里)
+        model_info = ALL_MODELS.get(model, {})
 
         return {
             "model": model,
@@ -326,9 +334,41 @@ class LLMService:
         # 备选模型配置
         self.fallback_configs = FALLBACK_CONFIGS
 
+        # 管理员后台设定的平台默认模型(llm 运行时配置, 如 admin_default_model)
+        self._admin_default_model: Optional[str] = self._load_admin_default_model()
+
+    def _load_admin_default_model(self) -> Optional[str]:
+        """启动/切换时从 model_config 读回管理员默认模型。表不存在或值非法返回 None。"""
+        try:
+            from services.db_service import get_db_service
+            v = get_db_service().get_runtime_setting("admin_default_model")
+            return v if v and v in ALL_MODELS else None
+        except Exception as e:
+            logger.debug(f"读取平台默认模型失败(降级为环境变量默认): {e}")
+            return None
+
+    def get_admin_default_model(self) -> str:
+        """当前生效的平台默认模型: 管理员设定优先, 否则 env LLM_MODEL。"""
+        return self._admin_default_model or self.model
+
+    def set_admin_default_model(self, model: str) -> str:
+        """设置平台默认模型(管理员后台调用)。校验后持久化到 model_config 并即时生效。
+
+        值可为智谱 glm-* 或任意已配 key 的跨厂商模型名(见 utils.config.ALL_MODELS)。
+        """
+        model = (model or "").strip()
+        if model not in ALL_MODELS:
+            raise ValueError(f"未知模型: {model}, 可选: {', '.join(list(ALL_MODELS.keys())[:40])}")
+        from services.db_service import get_db_service
+        if not get_db_service().set_runtime_setting("admin_default_model", model):
+            raise RuntimeError("持久化平台默认模型失败")
+        self._admin_default_model = model
+        logger.info(f"平台默认模型已切换为: {model}")
+        return model
+
     def _get_model_config(self, task_type: str = "default") -> Dict[str, Any]:
-        """获取任务对应的模型配置"""
-        return self.router.get_model_config(task_type)
+        """获取任务对应的模型配置(带管理员默认模型覆盖)"""
+        return self.router.get_model_config(task_type, override=self._admin_default_model)
 
     def _get_headers(self, api_key: Optional[str] = None) -> Dict[str, str]:
         """获取请求头"""
@@ -337,6 +377,42 @@ class LLMService:
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
         }
+
+    def _build_provider_headers(self, endpoint: Dict[str, Any]) -> Dict[str, str]:
+        """按厂商构建请求头。
+
+        - 讯飞星火: HMAC-SHA256 签名(api_key/api_secret + Date/Host 参与签名);
+        - 其余(智谱/DeepSeek/Kimi/通义等): 标准 Bearer Token。
+        """
+        if (endpoint or {}).get("provider") == "xfyun":
+            import base64
+            import hashlib
+            import hmac as _hmac
+            from urllib.parse import urlparse
+
+            base = endpoint.get("api_base") or "https://spark-api-open.xf-yun.com/v1"
+            host = urlparse(base).netloc
+            date = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime())
+            signature_origin = f"host: {host}\ndate: {date}\nPOST /v1/chat/completions HTTP/1.1"
+            signature = base64.b64encode(
+                _hmac.new(
+                    (endpoint.get("api_secret") or "").encode('utf-8'),
+                    signature_origin.encode('utf-8'),
+                    digestmod=hashlib.sha256,
+                ).digest()
+            ).decode('utf-8')
+            authorization = (
+                f'api_key="{(endpoint.get("api_key") or "")}", '
+                f'algorithm="hmac-sha256", headers="host date request-line", '
+                f'signature="{signature}"'
+            )
+            return {
+                "Authorization": authorization,
+                "Content-Type": "application/json",
+                "Date": date,
+                "Host": host,
+            }
+        return self._get_headers((endpoint or {}).get("api_key"))
 
     def _build_payload(
         self,
@@ -400,37 +476,52 @@ class LLMService:
 
         logger.debug(f"LLM请求: model={model_name}, task={task_type}, messages={len(messages)}条, temperature={model_config.get('temperature')}")
 
-        try:
-            headers = self._get_headers()
-            payload = self._build_payload(messages, model_config, stream, response_format)
+        # ⭐ 跨厂商: 按所选模型解析到对应厂商端点(智谱模型→智谱; deepseek/kimi/通义/星火→各自底座)。
+        # 非智谱厂商失败时自动回落到智谱默认路由重试一次, 保证切了厂商也不至于让对话崩掉。
+        endpoint = resolve_model_endpoint(model_name)
+        candidates = [(endpoint, model_config, model_name)]
+        if endpoint.get("provider") != "zhipu":
+            fb_cfg = self.router.get_model_config(task_type, override=None)  # 不带默认覆盖 → 智谱路由
+            fb_model = fb_cfg.get("model") or "glm-4-flash"
+            candidates.append((resolve_model_endpoint(fb_model), fb_cfg, fb_model))
 
-            async with httpx.AsyncClient(timeout=45.0) as client:
-                response = await client.post(
-                    f"{self.api_base}/chat/completions",
-                    headers=headers,
-                    json=payload,
-                )
-                response.raise_for_status()
-                data = response.json()
+        last_status = None
+        last_text = ""
+        for attempt_no, (ep, cfg, label) in enumerate(candidates):
+            try:
+                if attempt_no > 0:
+                    logger.warning(
+                        f"模型 {model_name}({endpoint.get('provider')}) 调用失败, 回落到智谱重试"
+                    )
+                headers = self._build_provider_headers(ep)
+                payload = self._build_payload(messages, cfg, stream, response_format)
+                # 实际 remote 模型名(跨厂商端点可能同名不同底座, 显式覆盖一次)
+                payload["model"] = ep.get("model") or cfg.get("model") or model_name
+                base = ep.get("api_base") or self.api_base
 
-                # 解析响应
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    response = await client.post(
+                        f"{base}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+
                 content = data["choices"][0]["message"]["content"]
 
-                # 提取token用量
+                # 提取token用量 + 成本(全量目录里查单价比)
                 usage = data.get("usage", {})
                 tokens_input = usage.get("prompt_tokens", 0)
                 tokens_output = usage.get("completion_tokens", 0)
-
-                # 计算成本
-                model_info = ZHIPU_MODELS.get(model_name, {})
-                cost_per_1k = model_info.get("cost_per_1k", 0.0)
-                cost = (tokens_input + tokens_output) / 1000 * cost_per_1k
+                model_info = ALL_MODELS.get(label, {})
+                cost = (tokens_input + tokens_output) / 1000 * model_info.get("cost_per_1k", 0.0)
 
                 # 记录调用
                 latency = time.time() - start_time
-                logger.debug(f"LLM响应: model={model_name}, latency={latency:.2f}s, tokens_in={tokens_input}, tokens_out={tokens_output}, cost={cost:.4f}")
+                logger.debug(f"LLM响应: model={label}, provider={ep.get('provider')}, latency={latency:.2f}s, tokens_in={tokens_input}, tokens_out={tokens_output}, cost={cost:.4f}")
                 self.router.record_call(ModelCallRecord(
-                    model_name=model_name,
+                    model_name=label,
                     task_type=task_type,
                     timestamp=datetime.now(),
                     latency=latency,
@@ -439,45 +530,47 @@ class LLMService:
                     cost=cost,
                     success=True,
                 ))
-                from services.metrics_service import get_metrics_collector
-                get_metrics_collector().record_llm_call(
-                    model_name, tokens_input, tokens_output, cost, latency, True
-                )
+                try:
+                    from services.metrics_service import get_metrics_collector
+                    get_metrics_collector().record_llm_call(
+                        label, tokens_input, tokens_output, cost, latency, True
+                    )
+                except Exception:
+                    pass
 
                 return content
 
-        except httpx.HTTPStatusError as e:
-            error_text = e.response.text
-            logger.error(f"API调用失败: {e.response.status_code} - {error_text}")
+            except httpx.HTTPStatusError as e:
+                last_status = e.response.status_code
+                last_text = e.response.text
+                logger.error(f"API调用失败: {last_status} - {last_text[:200]}")
+            except Exception as e:
+                last_status = None
+                last_text = str(e)
+                logger.error(f"调用异常: {str(e)}")
 
-            # 记录失败
-            latency = time.time() - start_time
-            self.router.record_call(ModelCallRecord(
-                model_name=model_name,
-                task_type=task_type,
-                timestamp=datetime.now(),
-                latency=latency,
-                success=False,
-                error=f"{e.response.status_code}: {error_text[:200]}",
-            ))
+        # 所有候选都失败: 记录一条失败指标(以首选模型名义)并返回可读错误
+        latency = time.time() - start_time
+        self.router.record_call(ModelCallRecord(
+            model_name=model_name,
+            task_type=task_type,
+            timestamp=datetime.now(),
+            latency=latency,
+            success=False,
+            error=(f"{last_status}: {last_text[:200]}" if last_status is not None else last_text[:200]),
+        ))
+        try:
             from services.metrics_service import get_metrics_collector
             get_metrics_collector().record_llm_call(model_name, 0, 0, 0.0, latency, False)
+        except Exception:
+            pass
 
-            # 检查是否需要降级
-            if self._should_fallback(e.response.status_code, error_text):
-                self.router.activate_fallback(
-                    model_name,
-                    f"HTTP {e.response.status_code}"
-                )
-
-            return self._handle_error(e.response.status_code, error_text)
-
-        except Exception as e:
-            logger.error(f"调用异常: {str(e)}")
-            latency = time.time() - start_time
-            from services.metrics_service import get_metrics_collector
-            get_metrics_collector().record_llm_call(model_name, 0, 0, 0.0, latency, False)
-            return f"调用异常: {str(e)}"
+        if last_status is not None:
+            # 检查是否需要降级(智谱模型失败走原有激活降级; 跨厂商失败下次仍走回落逻辑)
+            if self._should_fallback(last_status, last_text):
+                self.router.activate_fallback(model_name, f"HTTP {last_status}")
+            return self._handle_error(last_status, last_text)
+        return f"调用异常: {last_text[:200]}"
 
     async def chat_stream(
         self,
@@ -495,16 +588,20 @@ class LLMService:
         if max_tokens is not None:
             model_config["max_tokens"] = max_tokens
 
-        headers = self._get_headers()
+        # ⭐ 跨厂商: 按模型解析端点与鉴权(默认智谱)
+        ep = resolve_model_endpoint(model_config["model"])
+        headers = self._build_provider_headers(ep)
         payload = self._build_payload(messages, model_config, stream=True)
+        payload["model"] = ep.get("model") or model_config["model"]
+        base = ep.get("api_base") or self.api_base
 
-        logger.debug(f"LLM流式请求: model={model_config['model']}, task={task_type}")
+        logger.debug(f"LLM流式请求: model={model_config['model']}, provider={ep.get('provider')}, task={task_type}")
 
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
                     "POST",
-                    f"{self.api_base}/chat/completions",
+                    f"{base}/chat/completions",
                     headers=headers,
                     json=payload,
                 ) as response:
@@ -593,10 +690,13 @@ class LLMService:
             return f"API调用失败: {status_code} - {error_text[:200]}"
 
     def get_status(self) -> Dict[str, Any]:
-        """获取服务状态"""
+        """获取服务状态(provider 反映当前生效默认模型所属厂商)"""
+        default_model = self.get_admin_default_model()
+        ep = resolve_model_endpoint(default_model)
         return {
-            "provider": "zhipu",
-            "model": self.model,
+            "provider": ep.get("provider") or "zhipu",
+            "model": default_model,
+            "default_model": default_model,
             "health": self.router.get_health_status(),
             "cost": self.router.get_cost_summary(),
         }

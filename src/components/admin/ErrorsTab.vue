@@ -8,7 +8,7 @@
       <StatCard type="danger" label="总错误数" :value="stats.totalErrors" />
       <StatCard type="warning" label="超时错误" :value="stats.timeoutErrors" />
       <StatCard type="warning" label="LLM错误" :value="stats.llmErrors" />
-      <StatCard type="info" label="校验错误" :value="stats.validationErrors" />
+      <StatCard type="danger" label="Agent错误" :value="stats.agentErrors" />
     </div>
     <div v-if="errorRows.length" class="data-table">
       <table>
@@ -47,8 +47,9 @@ const stats = computed(() => {
   return {
     totalErrors: err.total || 0,
     timeoutErrors: err.timeout || 0,
-    llmErrors: err.llm_error || 0,
-    validationErrors: err.validation_error || 0,
+    llmErrors: err.llm || 0,
+    agentErrors: err.agent || 0,
+    validationErrors: err.validation || 0,
   }
 })
 
@@ -56,11 +57,10 @@ const errorRows = computed(() => {
   const s = stats.value
   const total = s.totalErrors || 1
   const items = [
-    { type: 'LLM调用超时', count: s.timeoutErrors, severity: 'warning', severityLabel: '警告' },
-    { type: 'LLM返回429', count: Math.floor(Math.random() * 5), severity: 'warning', severityLabel: '警告' },
-    { type: 'LLM返回500', count: Math.floor(Math.random() * 3), severity: 'danger', severityLabel: '严重' },
+    { type: '请求超时', count: s.timeoutErrors, severity: 'warning', severityLabel: '警告' },
+    { type: 'LLM错误', count: s.llmErrors, severity: 'danger', severityLabel: '严重' },
+    { type: 'Agent错误/熔断降级', count: s.agentErrors, severity: 'danger', severityLabel: '严重' },
     { type: 'Schema校验失败', count: s.validationErrors, severity: 'info', severityLabel: '提示' },
-    { type: 'Agent熔断降级', count: Math.floor(Math.random() * 2), severity: 'danger', severityLabel: '严重' },
   ].filter(e => e.count > 0).sort((a, b) => b.count - a.count)
   return items.map(e => ({ ...e, percent: (e.count / total * 100).toFixed(1) }))
 })

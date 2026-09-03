@@ -343,8 +343,168 @@ class DatabaseService:
         except Exception as e:
             logger.debug(f"追加字段 {table}.{column} 跳过: {e}")
 
+    def _create_llm_runtime_tables(self):
+        """合并部署(与主后端共库 jobhunter)时, llm 只自建自己的运行时支撑表。
+
+        主业务表(skills/jobs/users/resumes/companies/...)一律由主后端负责创建维护,
+        llm 不再对其做 CREATE / 补列 / 加索引(避免启动顺序错乱或 schema 漂移改到主表)。
+        下方 SQLite/独立库路径里保留了同一批运行时表的建表逻辑(单机演示用), 两处保持一致。
+        """
+        # 与 db/mysql/04_llm_module.sql 的 9 张 llm 私表 DDL 对齐
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS relations (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                source_type VARCHAR(50) NOT NULL,
+                source_name VARCHAR(255) NOT NULL,
+                target_type VARCHAR(50) NOT NULL,
+                target_name VARCHAR(255) NOT NULL,
+                relation_type VARCHAR(50) NOT NULL,
+                weight DOUBLE DEFAULT 1.0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_relations_source (source_name(191)),
+                KEY idx_relations_target (target_name(191))
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sessions_db (
+                id VARCHAR(50) NOT NULL,
+                user_id INT DEFAULT NULL,
+                title VARCHAR(255) NOT NULL DEFAULT '',
+                industry_context VARCHAR(50) NOT NULL DEFAULT '',
+                role VARCHAR(50) NOT NULL DEFAULT 'job_seeker',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_sessions_user_id (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                session_id VARCHAR(50) NOT NULL,
+                role VARCHAR(20) NOT NULL,
+                content TEXT NOT NULL,
+                intent VARCHAR(50) DEFAULT NULL,
+                agent_tasks TEXT,
+                recommended_jobs TEXT,
+                latency_ms DOUBLE NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_messages_session (session_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        # 老库 messages 表缺 recommended_jobs 列(2026-09-03 新增: 历史回放岗位卡片用), 已存在则忽略
+        try:
+            self.cursor.execute("ALTER TABLE messages ADD COLUMN recommended_jobs TEXT")
+            self.conn.commit()
+        except Exception:
+            pass
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agent_executions (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                request_id VARCHAR(50) DEFAULT NULL,
+                session_id VARCHAR(50) DEFAULT NULL,
+                intent VARCHAR(50) DEFAULT NULL,
+                task_type VARCHAR(50) DEFAULT NULL,
+                model_used VARCHAR(100) DEFAULT NULL,
+                input_tokens INT NOT NULL DEFAULT 0,
+                output_tokens INT NOT NULL DEFAULT 0,
+                cost DOUBLE NOT NULL DEFAULT 0,
+                latency_ms DOUBLE NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                retry_count INT NOT NULL DEFAULT 0,
+                error_message TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_agent_exec_request (request_id),
+                KEY idx_agent_exec_session (session_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS skill_taxonomy (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                name VARCHAR(255) NOT NULL,
+                category VARCHAR(100) DEFAULT NULL,
+                industry VARCHAR(50) DEFAULT NULL,
+                level VARCHAR(50) DEFAULT NULL,
+                description TEXT,
+                source VARCHAR(100) NOT NULL DEFAULT 'manual',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_skill_taxonomy_industry (industry)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS industry_configs (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                industry_code VARCHAR(50) NOT NULL,
+                industry_name VARCHAR(100) NOT NULL,
+                skill_categories TEXT,
+                prompt_overrides TEXT,
+                extraction_keywords TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uk_industry_code (industry_code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS evaluations (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                message_id INT DEFAULT NULL,
+                user_id INT DEFAULT NULL,
+                auto_score DOUBLE NOT NULL DEFAULT 0,
+                user_score DOUBLE NOT NULL DEFAULT 0,
+                user_feedback TEXT,
+                intent_accuracy DOUBLE NOT NULL DEFAULT 0,
+                task_completion DOUBLE NOT NULL DEFAULT 0,
+                response_quality DOUBLE NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS metrics (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                metric_name VARCHAR(100) NOT NULL,
+                metric_value DOUBLE NOT NULL,
+                labels_json TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_metrics_name (metric_name),
+                KEY idx_metrics_timestamp (timestamp)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_quotas (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                daily_calls INT NOT NULL DEFAULT 0,
+                daily_tokens INT NOT NULL DEFAULT 0,
+                quota_date VARCHAR(10) NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_user_quotas_user_date (user_id, quota_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        # llm 运行时配置项(如 admin_default_model: 管理员后台设的平台默认模型)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS model_config (
+                config_key VARCHAR(64) NOT NULL,
+                value VARCHAR(255) NOT NULL DEFAULT '',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (config_key)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        self.conn.commit()
+
     def _create_tables(self):
         """创建数据表"""
+        # 合并部署(与主后端共库 jobhunter): 主业务表由主后端负责建/维护,
+        # llm 启动只自建自己的运行时表后即返回, 不再对主表做任何 CREATE/补列/加索引。
+        if self.use_mysql and str(MYSQL_CONFIG.get("database", "")).lower() in ("jobhunter",):
+            self._create_llm_runtime_tables()
+            return
         # MySQL和SQLite的DDL差异：AUTO_INCREMENT vs AUTOINCREMENT
         auto_inc = "AUTO_INCREMENT" if self.use_mysql else "AUTOINCREMENT"
         # SQLite不支持JSON类型，用TEXT代替；MySQL支持JSON
@@ -663,6 +823,7 @@ class DatabaseService:
                 content TEXT NOT NULL,
                 intent VARCHAR(50),
                 agent_tasks TEXT,
+                recommended_jobs TEXT,
                 latency_ms REAL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -947,30 +1108,136 @@ class DatabaseService:
     def search_jobs(self, keyword: str = "", category: str = "", city: str = "",
                      status: str = "", limit: int = 100) -> List[Dict]:
         """搜索岗位"""
-        sql = "SELECT * FROM jobs WHERE is_deleted = 0"
-        params = []
+        try:
+            sql = "SELECT * FROM jobs WHERE is_deleted = 0"
+            params = []
 
-        if keyword:
-            sql += " AND (name LIKE ? OR description LIKE ?)"
-            params.extend([f"%{keyword}%", f"%{keyword}%"])
+            # 业务主库 jobs 列: title(非 name)/description/city/status..., 无 category;
+            # category 兼容入参但主库无此列故不使用。
+            if keyword:
+                sql += " AND (title LIKE ? OR description LIKE ?)"
+                params.extend([f"%{keyword}%", f"%{keyword}%"])
 
-        if category:
-            sql += " AND category = ?"
-            params.append(category)
+            if city:
+                sql += " AND city = ?"
+                params.append(city)
 
-        if city:
-            sql += " AND city = ?"
-            params.append(city)
+            if status:
+                sql += " AND status = ?"
+                params.append(status)
 
-        if status:
-            sql += " AND status = ?"
-            params.append(status)
+            sql += " ORDER BY created_at DESC LIMIT ?"
+            params.append(limit)
 
-        sql += " ORDER BY created_at DESC LIMIT ?"
-        params.append(limit)
+            self.cursor.execute(self._q(sql), params)
+            return [dict(row) for row in self.cursor.fetchall()]
+        except Exception as e:
+            # 主表 schema 由主后端维护, 个别差异列导致查询失败时降级空结果, 不阻断会话
+            import logging
+            logging.getLogger("db_service").warning(f"search_jobs 查询失败(降级): {e}")
+            return []
 
-        self.cursor.execute(self._q(sql), params)
-        return [dict(row) for row in self.cursor.fetchall()]
+    def search_job_openings(self, keyword: str = "", city: str = "",
+                            job_type: str = "", limit: int = 8) -> List[Dict]:
+        """检索真实在招岗位(带公司名/薪资/要求), 供 AI 顾问引用主库数据作答
+
+        JOIN 主库 companies 补公司名; 列名严格对应当前 jobhunter schema:
+        jobs(title/city/salary_*/experience_req/education_req/job_type/description),
+        companies(name/industry_code)。
+        """
+        try:
+            sql = ("SELECT j.id, j.title, j.city, j.district, j.salary_min, j.salary_max, "
+                   "j.salary_unit, j.salary_months, j.experience_req, j.education_req, "
+                   "j.job_type, j.description, c.name AS company, c.industry_code "
+                   "FROM jobs j LEFT JOIN companies c ON j.company_id = c.id "
+                   "WHERE j.is_deleted = 0")
+            params = []
+            if keyword:
+                sql += " AND (j.title LIKE ? OR j.description LIKE ?)"
+                params.extend([f"%{keyword}%", f"%{keyword}%"])
+            if city:
+                sql += " AND j.city = ?"
+                params.append(city)
+            if job_type:
+                sql += " AND j.job_type = ?"
+                params.append(job_type)
+            sql += " ORDER BY j.created_at DESC LIMIT ?"
+            params.append(limit)
+            self.cursor.execute(self._q(sql), params)
+            return [dict(row) for row in self.cursor.fetchall()]
+        except Exception as e:
+            import logging
+            logging.getLogger("db_service").warning(f"search_job_openings 查询失败(降级): {e}")
+            return []
+
+    def get_job_openings_summary(self, keyword: str = "", top: int = 5) -> Dict[str, Any]:
+        """主库在招岗位口径统计(供 AI 顾问报告/趋势回答引用并标注来源)。
+
+        keyword 非空时按 title/description 命中统计; 空则统计全库在招。
+        返回: {keyword, total_openings, city_top:[{city,count}], sample_titles:[...]}
+        """
+        out: Dict[str, Any] = {"keyword": keyword, "total_openings": 0, "city_top": [], "sample_titles": []}
+        try:
+            base = "FROM jobs WHERE is_deleted = 0"
+            kw_sql, kw_params = "", []
+            if keyword:
+                kw_sql = " AND (title LIKE ? OR description LIKE ?)"
+                kw_params = [f"%{keyword}%", f"%{keyword}%"]
+            self.cursor.execute(self._q("SELECT COUNT(*) AS c " + base + kw_sql), kw_params)
+            row = self.cursor.fetchone()
+            out["total_openings"] = int(row["c"]) if row and row["c"] is not None else 0
+            self.cursor.execute(
+                self._q("SELECT city, COUNT(*) AS c " + base + kw_sql +
+                        " AND city IS NOT NULL AND city != '' GROUP BY city ORDER BY c DESC LIMIT ?"),
+                kw_params + [top])
+            out["city_top"] = [
+                {"city": r["city"], "count": int(r["c"])}
+                for r in self.cursor.fetchall()
+            ]
+            if keyword:
+                self.cursor.execute(
+                    self._q("SELECT title " + base + kw_sql + " ORDER BY created_at DESC LIMIT 5"),
+                    kw_params)
+                out["sample_titles"] = [r["title"] for r in self.cursor.fetchall()]
+        except Exception as e:
+            import logging
+            logging.getLogger("db_service").warning(f"get_job_openings_summary 查询失败(降级): {e}")
+        return out
+
+    # ========== llm 运行时配置项(model_config 表) ==========
+
+    def get_runtime_setting(self, key: str) -> Optional[str]:
+        """读取 llm 运行时配置(如 admin_default_model)。表不存在/失败返回 None, 不抛错。"""
+        try:
+            self.cursor.execute(self._q("SELECT value FROM model_config WHERE config_key = ?"), (key,))
+            row = self.cursor.fetchone()
+            return row["value"] if row else None
+        except Exception as e:
+            import logging
+            logging.getLogger("db_service").debug(f"get_runtime_setting({key}) 失败: {e}")
+            return None
+
+    def set_runtime_setting(self, key: str, value: str) -> bool:
+        """写入 llm 运行时配置(upsert)。失败返回 False。"""
+        try:
+            if self.use_mysql:
+                self.cursor.execute(self._q("""
+                    INSERT INTO model_config (config_key, value, updated_at)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                    ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP
+                """), (key, value))
+            else:
+                self.cursor.execute(self._q("""
+                    INSERT INTO model_config (config_key, value, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(config_key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+                """), (key, value))
+            self.conn.commit()
+            return True
+        except Exception as e:
+            import logging
+            logging.getLogger("db_service").warning(f"set_runtime_setting({key}) 失败: {e}")
+            return False
 
     # ========== 技能操作 ==========
 
@@ -980,11 +1247,12 @@ class DatabaseService:
         if not skill.skill_code:
             import uuid
             skill.skill_code = f"SK_{uuid.uuid4().hex[:12]}"
+        # 合并后业务表归主后端维护: skills 在 jobhunter 无 description/level/related_jobs 列,
+        # 只插两 schema 共有列(skill_code/name/alias/category/is_hot), 保证可移植。
         self.cursor.execute(self._q("""
-            INSERT INTO skills (skill_code, name, alias, category, is_hot, description, level, related_jobs)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """), (skill.skill_code, skill.name, skill.alias, skill.category,
-              skill.is_hot, skill.description, skill.level, skill.related_jobs))
+            INSERT INTO skills (skill_code, name, alias, category, is_hot)
+            VALUES (?, ?, ?, ?, ?)
+        """), (skill.skill_code, skill.name, skill.alias, skill.category, skill.is_hot))
         self.conn.commit()
         return self.cursor.lastrowid
 
@@ -1000,7 +1268,8 @@ class DatabaseService:
         params = []
 
         if keyword:
-            sql += " AND (name LIKE ? OR description LIKE ?)"
+            # 业务主库 skills 无 description 列(两 schema 共有 name/alias), 兼容检索
+            sql += " AND (name LIKE ? OR alias LIKE ?)"
             params.extend([f"%{keyword}%", f"%{keyword}%"])
 
         if category:
@@ -1280,12 +1549,13 @@ class DatabaseService:
     # ========== 消息操作 ==========
 
     def create_message(self, session_id: str, role: str, content: str,
-                       intent: str = "", agent_tasks: str = "", latency_ms: float = 0) -> int:
-        """创建消息记录"""
+                       intent: str = "", agent_tasks: str = "", latency_ms: float = 0,
+                       recommended_jobs: Optional[str] = None) -> int:
+        """创建消息记录; recommended_jobs 为结构化岗位推荐(JSON文本), 供历史回放渲染卡片"""
         self.cursor.execute(self._q("""
-            INSERT INTO messages (session_id, role, content, intent, agent_tasks, latency_ms)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """), (session_id, role, content, intent, agent_tasks, latency_ms))
+            INSERT INTO messages (session_id, role, content, intent, agent_tasks, latency_ms, recommended_jobs)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """), (session_id, role, content, intent, agent_tasks, latency_ms, recommended_jobs))
         self.conn.commit()
         return self.cursor.lastrowid
 
@@ -1647,6 +1917,57 @@ class DatabaseService:
             WHERE rs.resume_id = ?
         """), (resume_id,))
         return [dict(row) for row in self.cursor.fetchall()]
+
+    def get_user_resume_profile(self, user_id) -> Optional[Dict]:
+        """取某用户最新一份已解析简历的画像(读主库 resumes/resume_skills/resume_experiences)。
+
+        供 AI 顾问把求职者真实简历/技能注入 resume_match/skill_gap/learning_path 等场景。
+        无简历/出错一律返回 None(不抛异常, 上层降级为用户在对话里的自述)。
+        返回: {resume_id, name, city, work_years, education, expect_job, expect_city,
+               skills: [{name, category, proficiency, years}],
+               experiences: [{company_name, title, start_date, end_date, is_current}]}
+        """
+        try:
+            user_id = int(user_id)
+        except (TypeError, ValueError):
+            return None
+        try:
+            self.cursor.execute(self._q(
+                "SELECT * FROM resumes WHERE user_id = ? AND is_deleted = 0 "
+                "AND parse_status = 'done' "
+                "ORDER BY is_primary DESC, updated_at DESC LIMIT 1"
+            ), (user_id,))
+            row = self.cursor.fetchone()
+            if not row:
+                return None
+            resume = dict(row)
+            profile: Dict[str, Any] = {
+                "resume_id": resume.get("id"),
+                "name": resume.get("name"),
+                "city": resume.get("city"),
+                "work_years": resume.get("work_years"),
+                "education": resume.get("education"),
+                "expect_job": resume.get("expect_job"),
+                "expect_city": resume.get("expect_city"),
+                "skills": [],
+                "experiences": [],
+            }
+            for s in self.get_resume_skills(resume["id"]):
+                if s.get("skill_name"):
+                    profile["skills"].append({
+                        "name": s.get("skill_name"),
+                        "category": s.get("skill_category"),
+                        "proficiency": s.get("proficiency"),
+                        "years": s.get("years"),
+                    })
+            try:
+                profile["experiences"] = self.get_resume_experiences(resume["id"])
+            except Exception:
+                profile["experiences"] = []
+            return profile
+        except Exception as e:
+            logger.warning(f"get_user_resume_profile 失败(降级 None): {e}")
+            return None
 
     def create_resume_experience(self, exp: ResumeExperienceEntity) -> int:
         """创建工作经历"""

@@ -29,6 +29,11 @@
         <LLMTab :data="metricsData" @refresh="loadData" />
       </div>
 
+      <!-- 平台默认模型配置 -->
+      <div v-show="activeTab === 'modelcfg'" class="tab-panel">
+        <ModelConfig />
+      </div>
+
       <!-- 意图分布 -->
       <div v-show="activeTab === 'intents'" class="tab-panel">
         <IntentsTab :data="metricsData" @refresh="loadData" />
@@ -60,6 +65,7 @@ import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import OverviewTab from '@/components/admin/OverviewTab.vue'
 import AgentsTab from '@/components/admin/AgentsTab.vue'
 import LLMTab from '@/components/admin/LLMTab.vue'
+import ModelConfig from '@/components/admin/ModelConfig.vue'
 import IntentsTab from '@/components/admin/IntentsTab.vue'
 import ErrorsTab from '@/components/admin/ErrorsTab.vue'
 import TracesTab from '@/components/admin/TracesTab.vue'
@@ -69,6 +75,7 @@ const tabs = [
   { id: 'overview', label: '请求概览' },
   { id: 'agents', label: 'Agent看板' },
   { id: 'llm', label: 'LLM看板' },
+  { id: 'modelcfg', label: '模型配置' },
   { id: 'intents', label: '意图分布' },
   { id: 'errors', label: '错误分析' },
   { id: 'traces', label: '追踪详情' },

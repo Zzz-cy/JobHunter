@@ -3,7 +3,7 @@ Agent协同层 API接口
 提供RESTful API和WebSocket接口
 """
 import asyncio
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -17,10 +17,18 @@ router = APIRouter(prefix="/agents", tags=["Agent协同"])
 # ==================== 认证依赖辅助 ====================
 
 async def _get_optional_user(request: Request) -> dict:
-    """获取可选用户信息（从中间件注入的state中读取）"""
+    """获取可选用户信息（从中间件注入的state中读取）。
+
+    user_id 统一转 int：JWT sub 是字符串(如"2")，而库中 user_id 列读出是 int 2，
+    字符串直传会导致所有权/续聊判断误判（会话被隐藏或重建）。
+    """
     user_id = getattr(request.state, "user_id", 0)
     user_role = getattr(request.state, "user_role", "")
-    if user_id and user_id != 0:
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        user_id = 0
+    if user_id:
         return {"user_id": user_id, "role": user_role}
     return None
 
@@ -32,6 +40,9 @@ class ChatRequest(BaseModel):
     industry: Optional[str] = None
     role: Optional[str] = None
     user_job: Optional[str] = None
+    # 岗位上下文(主站"问顾问"入口): 定位到具体某条 JD, 顾问针对该岗作答
+    # 形如 {"job_id": 6320, "jd_text": "可选, 前端无 job_id 时直接传 JD 文本"}
+    context: Optional[Dict[str, Any]] = None
 
 
 class WorkflowRequest(BaseModel):
@@ -88,7 +99,52 @@ async def agent_chat(request: ChatRequest, req: Request = None):
         if request.user_job:
             user_message = f"[用户职业: {request.user_job}] {request.message}"
     
-        # ========== 总超时保护：120秒必须返回 ==========
+        # ===== 已登录用户: 取其主库最新简历画像, 让 resume_match/skill_gap 等按真实简历作答 =====
+        user_profile = None
+        if user_id:
+            try:
+                from services.db_service import get_db_service
+                user_profile = get_db_service().get_user_resume_profile(user_id)
+            except Exception as e:
+                logger.debug(f"读取用户简历画像失败(降级为用户自述): {e}")
+        # ===== 画像注入结束 =====
+
+        # ===== 岗位上下文(主站"问顾问"入口): 有 job_id 就读主库该岗位真实JD, 让顾问针对这条JD作答 =====
+        job_context = None
+        if request.context:
+            try:
+                from services.db_service import get_db_service
+                ctx = request.context
+                jid = ctx.get("job_id")
+                job_context = {"job_id": jid}
+                if jid:
+                    job = get_db_service().get_job(jid)
+                    if job:
+                        _lo, _hi = job.get("salary_min"), job.get("salary_max")
+                        _salary = "薪资面议"
+                        if _lo or _hi:
+                            _unit = (job.get("salary_unit") or "").strip().lower()
+                            _s = f"{int(_lo or 0)}-{int(_hi or 0)}" if _hi else str(int(_lo or 0))
+                            _salary = (_s + ("元/月" if _unit in ("month", "月") else "元/年" if _unit in ("year", "年") else "元"))
+                        job_context.update({
+                            "title": job.get("title", ""),
+                            "city": job.get("city", ""),
+                            "salary": _salary,
+                            "experience": job.get("experience_req", ""),
+                            "education": job.get("education_req", ""),
+                            "description": (job.get("description_text") or job.get("description") or ""),
+                        })
+                jd_text = (ctx.get("jd_text") or "").strip()
+                if jd_text:
+                    job_context["description"] = jd_text
+                if not (job_context.get("title") or job_context.get("description")):
+                    job_context = None  # 两个来源都没有 → 视为无岗位上下文
+            except Exception as e:
+                logger.debug(f"解析岗位上下文失败(降级为普通对话): {e}")
+                job_context = None
+        # ===== 岗位上下文解析结束 =====
+
+        # ========== 总超时保护：多Agent/长生成(简历匹配/报告)可达1-3分钟, 给300秒(对齐nginx proxy_read_timeout 300s) ==========
         try:
             result = await asyncio.wait_for(
                 master.process(
@@ -96,16 +152,18 @@ async def agent_chat(request: ChatRequest, req: Request = None):
                     history=history,
                     industry=industry,
                     role=role,
+                    user_profile=user_profile,
+                    job_context=job_context,
                 ),
-                timeout=120
+                timeout=300
             )
         except asyncio.TimeoutError:
             from services.metrics_service import get_metrics_collector
-            get_metrics_collector().record_request(500, 120.0)
+            get_metrics_collector().record_request(500, 300.0)
             get_metrics_collector().increment("requests_errors", labels={"type": "timeout"})
-            logger.error(f"Agent处理总超时(120s): {request.message[:80]}")
+            logger.error(f"Agent处理总超时(300s): {request.message[:80]}")
             result = {
-                "answer": "抱歉，处理您的请求耗时过长，请尝试简化问题后重试。例如直接问'Python后端需要什么技能'。",
+                "answer": "抱歉，这条请求处理超时了(可能是上游模型较慢或请求过于复杂)。请稍后重试；若连续失败，可把问题拆小一点再问。",
                 "intent": {"intent": "timeout", "confidence": 0},
                 "tasks": [],
                 "results": {},
@@ -113,7 +171,12 @@ async def agent_chat(request: ChatRequest, req: Request = None):
         # ========== 总超时保护结束 ==========
     
         answer = result.get("answer", "")
-        sm.add_message(session_id, "assistant", str(answer))
+        # 把本次会话真实生成的岗位卡片随消息落库(recommended_jobs 列), 前端历史回放可再渲染/再点
+        _cards = result.get("recommended_jobs")
+        sm.add_message(
+            session_id, "assistant", str(answer),
+            recommended_jobs=_cards if isinstance(_cards, list) else None,
+        )
     
         try:
             await sm.compress_context(session_id)
@@ -228,8 +291,65 @@ async def get_model_status():
     return {
         "provider": status.get("provider", "unknown"),
         "model": status.get("model", "unknown"),
+        "default_model": status.get("default_model", ""),
         "health": status.get("health", {}),
     }
+
+
+class SetDefaultModelRequest(BaseModel):
+    """设置平台默认模型请求"""
+    model: str = ""
+
+
+@router.get("/models")
+async def list_models():
+    """列出可用模型(含成本档位)与当前平台默认模型"""
+    from services.llm_service import get_llm_service
+    from utils.config import ALL_MODELS, FALLBACK_CONFIGS
+    llm = get_llm_service()
+    # 可选列表 = 智谱 glm-* + 已配好 key 的跨厂商模型(deepseek/kimi/通义/讯飞星火)
+    available = [
+        {
+            "name": name,
+            "provider": cfg.get("provider") or "zhipu",
+            "provider_label": cfg.get("provider_label") or "智谱",
+            "tier": cfg.get("tier", ""),
+            "cost_per_1k": cfg.get("cost_per_1k", 0),
+            "json_mode": cfg.get("json_mode", False),
+            "tool_call": cfg.get("tool_call", False),
+            "max_tokens": cfg.get("max_tokens", 4096),
+            "description": cfg.get("description", ""),
+        }
+        for name, cfg in ALL_MODELS.items()
+    ]
+    return {
+        "provider": "zhipu",
+        "current": llm.get_admin_default_model(),
+        "admin_default": llm.get_admin_default_model(),
+        "available": available,
+        "fallback_providers_configured": [p for p, c in FALLBACK_CONFIGS.items() if c.get("api_key")],
+    }
+
+
+@router.post("/models/default")
+async def set_default_model(body: SetDefaultModelRequest, req: Request = None):
+    """设置平台默认模型(仅管理员)。影响后续生成/分析类任务所用模型; 意图识别等轻任务仍走廉价路由。"""
+    from services.llm_service import get_llm_service
+    role = ""
+    if req:
+        cu = await _get_optional_user(req)
+        role = (cu or {}).get("role", "")
+    if role not in ("admin", "administrator", "超级管理员"):
+        raise HTTPException(status_code=403, detail="仅管理员可设置平台默认模型")
+    try:
+        llm = get_llm_service()
+        model = llm.set_admin_default_model(body.model)
+        return {"status": "ok", "default_model": model}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"设置默认模型失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"设置失败: {str(e)}")
 
 
 @router.get("/sessions")
@@ -242,6 +362,21 @@ async def list_sessions(req: Request = None):
         current_user = await _get_optional_user(req)
         user_id = current_user["user_id"] if current_user else None
     return {"sessions": sm.list_sessions(user_id=user_id)}
+
+
+@router.get("/sessions/{session_id}/messages")
+async def get_session_messages(session_id: str, limit: int = 200, req: Request = None):
+    """获取某会话的完整历史消息(读库, 供前端刷新后续聊/回看)"""
+    from agents.agent_coordinator import get_session_manager
+    sm = get_session_manager()
+    user_id = None
+    if req:
+        current_user = await _get_optional_user(req)
+        user_id = current_user["user_id"] if current_user else None
+    result = sm.list_messages(session_id, user_id=user_id, limit=limit)
+    if result is None:
+        raise HTTPException(status_code=403, detail="无权访问此会话或会话不存在")
+    return result
 
 
 @router.delete("/sessions/{session_id}")

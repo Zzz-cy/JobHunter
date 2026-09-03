@@ -33,38 +33,39 @@ const props = defineProps({
 const metrics = computed(() => {
   const d = props.data.data || props.data
   const req = d.requests || {}
+  const lat = req.latency || {}
   const total = req.total || 0
-  const success = req.success || 0
-  const failed = req.failed || 0
+  const errors = req.errors || 0
+  const success = Math.max(total - errors, 0)
   const successRate = total > 0 ? (success / total * 100).toFixed(1) : 0
   return {
     total,
     success,
-    failed,
+    failed: errors,
     successRate,
-    p50: (req.p50_latency || 0).toFixed(2),
-    p99: (req.p99_latency || 0).toFixed(2),
+    p50: (lat.p50 || 0).toFixed(2),
+    p99: (lat.p99 || 0).toFixed(2),
     activeSessions: d.active_sessions || 0,
     activeUsers: d.active_users || 0,
   }
 })
 
-const requestTrendData = [
-  { label: '0-4h', value: Math.floor(Math.random() * 50 + 10), color: '#667eea' },
-  { label: '4-8h', value: Math.floor(Math.random() * 80 + 20), color: '#667eea' },
-  { label: '8-12h', value: Math.floor(Math.random() * 120 + 40), color: '#667eea' },
-  { label: '12-16h', value: Math.floor(Math.random() * 100 + 30), color: '#667eea' },
-  { label: '16-20h', value: Math.floor(Math.random() * 90 + 25), color: '#667eea' },
-  { label: '20-24h', value: Math.floor(Math.random() * 40 + 5), color: '#667eea' },
-]
+const TREND_COLORS = { success: '#10b981', warning: '#f59e0b', danger: '#ef4444' }
+const bucketColor = (label) =>
+  label.includes('10s') || label.includes('>10') ? TREND_COLORS.danger
+    : label.includes('5-10') ? '#f97316'
+      : label.includes('3-5') ? TREND_COLORS.warning
+        : TREND_COLORS.success
 
-const latencyData = [
-  { label: '<1s', value: 60, color: '#10b981' },
-  { label: '1-3s', value: 25, color: '#3b82f6' },
-  { label: '3-5s', value: 10, color: '#f59e0b' },
-  { label: '5-10s', value: 4, color: '#f97316' },
-  { label: '>10s', value: 1, color: '#ef4444' },
-]
+const requestTrendData = computed(() => {
+  const d = props.data.data || props.data
+  return (d.request_trend || []).map(t => ({ label: t.label, value: t.count || 0, color: '#667eea' }))
+})
+
+const latencyData = computed(() => {
+  const d = props.data.data || props.data
+  return (d.latency_buckets || []).map(b => ({ label: b.label, value: b.count || 0, color: bucketColor(b.label) }))
+})
 </script>
 
 <style scoped>

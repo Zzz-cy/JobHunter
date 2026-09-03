@@ -18,6 +18,7 @@ class ToolExecutor:
             "knowledge_search": self._knowledge_search,
             "graph_query": self._graph_query,
             "skill_database": self._skill_database,
+            "job_search": self._job_search,
             "jd_parser": self._jd_parser,
             "web_search": self._web_search,
             "calculator": self._calculator,
@@ -138,6 +139,61 @@ class ToolExecutor:
             "skills": skills,
             "count": len(skills),
         }
+
+    async def _job_search(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        真实岗位检索(主库 jobs+companies)
+
+        params: {keyword: str, city: str, job_type: str, limit: int}
+        """
+        from services.db_service import get_db_service
+
+        keyword = params.get("keyword", "")
+        city = params.get("city", "")
+        job_type = params.get("job_type", "")
+        limit = int(params.get("limit", 8))
+
+        db = get_db_service()
+        rows = db.search_job_openings(keyword=keyword, city=city,
+                                      job_type=job_type, limit=limit)
+
+        jobs = []
+        for j in rows:
+            salary = self._fmt_salary(j)
+            desc = (j.get("description") or "").replace("\n", " ").strip()
+            jobs.append({
+                "job_id": j.get("id"),
+                "title": j.get("title", ""),
+                "company": j.get("company", ""),
+                "city": j.get("city", ""),
+                "district": j.get("district", ""),
+                "salary": salary,
+                "experience": j.get("experience_req", ""),
+                "education": j.get("education_req", ""),
+                "job_type": j.get("job_type", ""),
+                "description": desc[:200],
+            })
+
+        return {"jobs": jobs, "count": len(jobs)}
+
+    @staticmethod
+    def _fmt_salary(job: Dict[str, Any]) -> str:
+        """主库 salary_min/max 为元; unit=month/year/月/年。格式化给 LLM 引用"""
+        lo = job.get("salary_min")
+        hi = job.get("salary_max")
+        unit = (job.get("salary_unit") or "").strip().lower()
+        if lo is None and hi is None:
+            return "薪资面议"
+        lo = int(lo or 0)
+        hi = int(hi or 0)
+        if lo == 0 and hi == 0:
+            return "薪资面议"
+        rng = f"{lo}-{hi}" if hi else str(lo)
+        if unit in ("month", "月"):
+            return f"{rng}元/月"
+        if unit in ("year", "年"):
+            return f"{rng}元/年"
+        return f"{rng}元"
 
     async def _jd_parser(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """

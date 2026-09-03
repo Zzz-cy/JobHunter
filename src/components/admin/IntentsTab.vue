@@ -4,6 +4,11 @@
       <h2>意图识别统计</h2>
       <button class="refresh-btn" @click="$emit('refresh')">🔄 刷新</button>
     </div>
+    <div class="stats-grid">
+      <StatCard type="info" label="意图识别请求" :value="totalIntents" />
+      <StatCard type="success" label="高置信占比" :value="highConfidenceRate + '%'" />
+      <StatCard type="warning" label="低置信率" :value="lowConfidenceRate + '%'" />
+    </div>
     <div class="chart-grid">
       <div class="chart-card">
         <h3>意图分布</h3>
@@ -26,6 +31,9 @@
             <td>{{ item.percent }}%</td>
             <td><ProgressBar :value="item.percent" color-class="green" /></td>
           </tr>
+          <tr v-if="!pieItems.length">
+            <td colspan="4" class="table-empty">暂无意图识别记录</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -34,6 +42,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import StatCard from '../common/StatCard.vue'
 import BarChart from '../common/BarChart.vue'
 import PieChart from '../common/PieChart.vue'
 import ProgressBar from '../common/ProgressBar.vue'
@@ -52,28 +61,58 @@ const INTENT_NAMES = {
 
 const COLORS = ['#667eea', '#764ba2', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#6b7280']
 
-const pieItems = computed(() => {
+const intentStats = computed(() => {
   const d = props.data.data || props.data
   const intents = d.intents || {}
-  let total = 0
-  const items = Object.entries(INTENT_NAMES).map(([key, label], idx) => {
-    const count = intents[key]?.count || Math.floor(Math.random() * 50 + 5)
-    total += count
-    return { key, label, count, color: COLORS[idx % COLORS.length] }
+  const distribution = intents.distribution || {}
+  // 真实结构: {general_qa: {count, percentage}, ...}(老格式可能是裸数字, 兼容两者)
+  const entries = Object.entries(distribution).map(([key, v]) => {
+    const count = v && typeof v === 'object' ? (Number(v.count) || 0) : (Number(v) || 0)
+    const pct = v && typeof v === 'object' && typeof v.percentage === 'number' ? v.percentage : null
+    return { key, count, pct }
   })
-  return items.map(item => ({ ...item, percent: total > 0 ? (item.count / total * 100).toFixed(1) : 0 }))
+  const total = intents.total || entries.reduce((s, e) => s + e.count, 0)
+  const items = entries.map((e, idx) => ({
+    key: e.key,
+    label: INTENT_NAMES[e.key] || e.key,
+    count: e.count,
+    percent: e.pct !== null ? e.pct * 100 : (total > 0 ? (e.count / total * 100) : 0),
+    color: COLORS[idx % COLORS.length],
+  }))
+  return {
+    total,
+    distribution: items,
+    lowConfidenceRate: typeof intents.low_confidence_rate === 'number' ? intents.low_confidence_rate : 0,
+  }
 })
 
-const confidenceData = [
-  { label: '<0.3', value: 5, color: '#ef4444' },
-  { label: '0.3-0.5', value: 10, color: '#f97316' },
-  { label: '0.5-0.6', value: 15, color: '#f59e0b' },
-  { label: '0.6-0.8', value: 35, color: '#3b82f6' },
-  { label: '0.8-1.0', value: 35, color: '#10b981' },
-]
+const totalIntents = computed(() => intentStats.value.total)
+const lowConfidenceRate = computed(() => (intentStats.value.lowConfidenceRate * 100).toFixed(1))
+const highConfidenceRate = computed(() => (100 - Number(lowConfidenceRate.value)).toFixed(1))
+
+const pieItems = computed(() =>
+  intentStats.value.distribution
+    .sort((a, b) => b.count - a.count)
+    .map(item => ({ ...item, percent: Number(item.percent || 0).toFixed(1) })))
+
+const confidenceData = computed(() => {
+  const d = props.data.data || props.data
+  const buckets = d.intent_confidence_buckets || []
+  const color = (label) =>
+    label.includes('0.8') ? '#10b981' : label.includes('0.6') ? '#3b82f6'
+      : label.includes('0.5') ? '#f59e0b' : '#ef4444'
+  return buckets.map(b => ({ label: b.label, value: b.count || 0, color: color(b.label) }))
+})
 </script>
 
 <style scoped>
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -103,4 +142,5 @@ const confidenceData = [
   font-size: 13px; color: #666; font-weight: 600; border-bottom: 1px solid #eee;
 }
 .data-table td { padding: 12px 16px; font-size: 13px; color: #333; border-bottom: 1px solid #f0f0f0; }
+.table-empty { text-align: center; color: #999; padding: 24px; }
 </style>

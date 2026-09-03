@@ -29,7 +29,7 @@
             <td><StatusBadge :type="a.rateClass">{{ a.successRate }}%</StatusBadge></td>
             <td>{{ a.avgLatency }}s</td>
             <td>{{ a.retries }}</td>
-            <td><ProgressBar :value="a.successRate" :color-class="a.rateClass" /></td>
+            <td><ProgressBar :value="a.successRate" :color-class="a.barClass" /></td>
           </tr>
         </tbody>
       </table>
@@ -60,12 +60,14 @@ const agentStats = computed(() => {
   const agentMetrics = d.agents || {}
   return Object.entries(AGENT_NAMES).map(([key, name]) => {
     const m = agentMetrics[key] || {}
-    const calls = m.calls || 0
-    const successRate = (m.success_rate || 0)
-    const avgLatency = (m.avg_latency || 0).toFixed(2)
+    const calls = m.total_calls || 0
+    const success = m.success || 0
+    const successRate = calls > 0 ? (success / calls * 100) : 0
+    const avgLatency = (m.latency && typeof m.latency.avg === 'number' ? m.latency.avg : 0)
     const retries = m.retries || 0
     const rateClass = successRate >= 90 ? 'success' : successRate >= 70 ? 'warning' : 'danger'
-    return { key, name, calls, successRate: successRate.toFixed(1), avgLatency, retries, rateClass }
+    const barClass = successRate >= 90 ? 'green' : successRate >= 70 ? 'yellow' : 'red'
+    return { key, name, calls, successRate: successRate.toFixed(1), avgLatency: avgLatency.toFixed(2), retries, rateClass, barClass }
   })
 })
 </script>

@@ -95,23 +95,88 @@ export const INDUSTRY_OPTIONS = [
   { value: 'education', label: '教育' },
 ]
 
+// ⭐ 会话状态提升到模块级(单例): 卡片跳 /jobs/:id 等路由切换会卸载 ChatView,
+// 若 ref 建在 useChat() 内部则每次挂载都是全新空状态 → "跳走就回不到大模型/只剩欢迎语"。
+// 模块级共享后, 组件卸载再回来(前进/后退导航)对话与 sessionId 原样保留; 整页刷新才重置(历史仍可开抽屉续聊)。
+const messages = ref([])
+const sessionId = ref(null)
+const isProcessing = ref(false)
+const modelStatus = ref('加载中...')
+const sessions = ref([])         // 我的历史会话列表(用于续聊)
+
+// ⭐ 归属用户守卫: 模块级状态是跨组件/跨路由共享的, 若登录人变了必须清空,
+// 否则"登出→换账号登录(同一tab不刷新)"会看到上一个账号残留的对话/历史(隐私+串号 bug)。
+// 用哨兵标记"尚未绑定任何用户", 首次进入也算一次绑定。
+let chatOwnerId = Symbol('unset')   // 当前这份会话属于哪个 user_id(null=匿名)
+
 export function useChat() {
-  const messages = ref([])
-  const sessionId = ref(null)
-  const isProcessing = ref(false)
-  const modelStatus = ref('加载中...')
+
+  // 账号切换时清空当前对话与会话列表(保留会话本身在库里, 新账号可开抽屉看自己的)
+  function syncChatOwner(uid) {
+    if (chatOwnerId !== uid) {
+      chatOwnerId = uid
+      sessionId.value = null
+      messages.value = []
+      sessions.value = []
+      isProcessing.value = false
+    }
+  }
 
   async function loadModelStatus() {
+    // 厂商 provider 值 → 中文展示名(与 llm_module config 里 provider_label 对齐)
+    const PROVIDER_LABELS = {
+      zhipu: '智谱',
+      deepseek: 'DeepSeek',
+      kimi: 'Kimi(Moonshot)',
+      dashscope: '通义千问(阿里)',
+      xfyun: '讯飞星火',
+    }
     try {
       const data = await get('/agents/model-status')
-      const text = `${data.provider === 'zhipu' ? '智谱' : data.provider} ${data.model}`
+      const text = `${PROVIDER_LABELS[data.provider] || data.provider || '智谱'} ${data.model}`
       modelStatus.value = text
     } catch {
       modelStatus.value = '智谱 GLM-4'
     }
   }
 
-  async function sendMessage(text, industry, role) {
+  // 拉取当前登录用户的历史会话列表(登录后才有;接口只回本人+匿名会话)
+  async function listSessions() {
+    try {
+      const data = await get('/agents/sessions')
+      sessions.value = (data && data.sessions) || []
+    } catch {
+      sessions.value = []
+    }
+  }
+
+  // 打开某历史会话: 拉完整消息回放, 并把 sessionId 定为它 → 下一条即续聊
+  async function openSession(id) {
+    try {
+      const data = await get(`/agents/sessions/${id}/messages`)
+      sessionId.value = id
+      messages.value = (data && data.messages || []).map((m) => {
+        const isUser = m.role === 'user'
+        const base = { id: m.id, intent: m.intent || null }
+        return isUser
+          ? { role: 'user', content: m.content, ...base }
+          // ⭐ 历史回放带当年真实岗位卡片(assistant 消息落库的 recommended_jobs 列):
+          //   前端据此重渲染卡片 → 旧推荐可再次点击跳详情
+          : { role: 'bot', answer: m.content, recommended_jobs: m.recommended_jobs || [], ...base }
+      })
+    } catch (err) {
+      messages.value.push({ role: 'error', content: err.message })
+    }
+  }
+
+  // 清空当前对话(开新会话); 历史仍留在库中可续
+  function newChat() {
+    sessionId.value = null
+    messages.value = []
+    addWelcomeMessage()
+  }
+
+  async function sendMessage(text, industry, role, context) {
     if (!text || isProcessing.value) return
 
     const userMsg = { role: 'user', content: text }
@@ -119,13 +184,18 @@ export function useChat() {
     isProcessing.value = true
 
     try {
-      const result = await post('/agents/chat', {
+      // context: 主站"问顾问"入口带岗位上下文, 形如 { job_id: 6320 }
+      const body = {
         message: text,
         session_id: sessionId.value,
         industry,
         role,
-      }, {
-        timeout: 120000,  // chat 调大模型较慢,单独放宽到 120 秒(默认 15 秒会超时)
+      }
+      if (context && Object.keys(context).length) {
+        body.context = context
+      }
+      const result = await post('/agents/chat', body, {
+        timeout: 300000,  // 多Agent/长生成(简历匹配/趋势报告)可能跑1-3分钟,放宽到300秒(对齐后端与nginx)
       })
 
       if (result.session_id) {
@@ -155,8 +225,13 @@ export function useChat() {
     sessionId,
     isProcessing,
     modelStatus,
+    sessions,
     loadModelStatus,
+    listSessions,
+    openSession,
+    newChat,
     sendMessage,
     addWelcomeMessage,
+    syncChatOwner,
   }
 }

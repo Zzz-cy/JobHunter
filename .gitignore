@@ -111,3 +111,6 @@ db/data/*.json
 # 真实简历与标注答案(含同学手机号/邮箱), 不进版本库
 evaluation/real/resumes/
 evaluation/real/ground_truth_real.json
+
+# 本机部署交接文档(含本机账号/端口/镜像源等本地信息, 不进版本库)
+DEPLOY_HANDOFF.md

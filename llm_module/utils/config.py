@@ -23,9 +23,10 @@ MYSQL_CONFIG = {
 SQLITE_PATH = os.getenv("SQLITE_PATH", str(BASE_DIR / "data" / "job_competency.db"))
 
 # Elasticsearch配置
+# 合并后 llm 与主后端共库: 真实 JD 索引由主后端写入维护, 名为 jobs(5000 条), llm 检索对准该索引
 ES_CONFIG = {
     "hosts": [os.getenv("ES_HOST", "http://localhost:9200")],
-    "index_name": os.getenv("ES_INDEX", "job_competency"),
+    "index_name": os.getenv("ES_INDEX", "jobs"),
 }
 
 # ==================== 大模型配置（自动检测主力提供商） ====================
@@ -292,6 +293,93 @@ FALLBACK_STRATEGY = {
     # 降级后是否尝试恢复
     "auto_recovery": True,
 }
+
+# ==================== 跨厂商可选模型目录(管理员可切平台默认) ====================
+# 智谱是主力; deepseek/kimi/dashscope(标准 OpenAI 兼容 Bearer)与讯飞星火(HMAC 签名)
+# 只在各自密钥配齐后才会出现在可选列表里(没 key 不开放, 免得选了个必然 401 的项)。
+# 管理员"模型配置"把平台默认切到任一目录内模型后, 生成/分析类任务随默认走, 意图识别仍走廉价智谱。
+# 模型名即所选 remote model 名(与智谱 glm-* 无冲突), 端点/密钥由 resolve_model_endpoint 解析。
+def _build_extra_provider_models():
+    extras = {}
+    # 标准 OpenAI 兼容(Bearer Token): deepseek / kimi / dashscope
+    for pid, cfg in FALLBACK_CONFIGS.items():
+        api_key = (cfg.get("api_key") or "").strip()
+        model = (cfg.get("model") or "").strip()
+        base = (cfg.get("api_base") or "").strip()
+        if not api_key or not model or not base:
+            continue
+        extras[model] = {
+            "name": model,
+            "provider": pid,
+            "provider_label": {
+                "deepseek": "DeepSeek",
+                "kimi": "Kimi(Moonshot)",
+                "dashscope": "通义千问(阿里)",
+            }.get(pid, pid),
+            "api_base": base,
+            "api_key": api_key,
+            "tier": pid,
+            "cost_per_1k": 0.0,
+            "json_mode": True,
+            "tool_call": False,
+            "stream": True,
+            "max_tokens": int(cfg.get("max_tokens") or 4096),
+            "description": f"{pid} 云端 API(OpenAI 兼容), 需该厂商自己的密钥",
+        }
+    # 讯飞星火: HMAC-SHA256 签名鉴权(三要素齐才开放)
+    xf_key = (XFYUN_CONFIG.get("apikey") or "").strip()
+    xf_secret = (XFYUN_CONFIG.get("apisecret") or "").strip()
+    xf_model = (XFYUN_CONFIG.get("model") or "").strip()
+    if xf_key and xf_secret and xf_model:
+        extras[xf_model] = {
+            "name": xf_model,
+            "provider": "xfyun",
+            "provider_label": "讯飞星火",
+            "api_base": (XFYUN_CONFIG.get("api_base") or "https://spark-api-open.xf-yun.com/v1").strip(),
+            "api_key": xf_key,
+            "api_secret": xf_secret,
+            "appid": (XFYUN_CONFIG.get("appid") or "").strip(),
+            "tier": "xfyun",
+            "cost_per_1k": 0.0,
+            "json_mode": False,
+            "tool_call": False,
+            "stream": True,
+            "max_tokens": 4096,
+            "description": "讯飞星火(HMAC-SHA256 鉴权)",
+        }
+    return extras
+
+
+EXTRA_MODELS = _build_extra_provider_models()
+
+# 全量可选模型: 智谱 + 已配 key 的其它厂商(供管理员模型配置/路由覆盖校验)
+ALL_MODELS = dict(ZHIPU_MODELS)
+ALL_MODELS.update(EXTRA_MODELS)
+
+
+def resolve_model_endpoint(model_name):
+    """模型名 → 实际调用的端点信息(provider/api_base/api_key/api_secret/appid/model)。
+
+    非智谱模型返回其厂商端点; 智谱(以及未匹配项)归一到智谱主端点。供 chat/chat_stream 每次按需切底座。
+    """
+    extra = EXTRA_MODELS.get(model_name)
+    if extra:
+        return {
+            "provider": extra.get("provider"),
+            "api_base": extra.get("api_base") or "",
+            "api_key": extra.get("api_key") or "",
+            "api_secret": extra.get("api_secret") or "",
+            "appid": extra.get("appid") or "",
+            "model": extra.get("name", model_name),
+        }
+    return {
+        "provider": "zhipu",
+        "api_base": ZHIPU_CONFIG["api_base"],
+        "api_key": ZHIPU_CONFIG["api_key"],
+        "api_secret": "",
+        "appid": "",
+        "model": model_name,
+    }
 
 # ==================== Neo4j配置 ====================
 NEO4J_CONFIG = {
