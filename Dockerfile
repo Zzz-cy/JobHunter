@@ -5,8 +5,9 @@ FROM docker.1ms.run/library/python:3.12-slim
 WORKDIR /app
 
 # 先装依赖(利用 docker 层缓存: 只有 requirements 变了才重装)
+# 走清华 pypi 镜像, 国内构建快好几倍
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 代码 + SQL 脚本(bootstrap 初始化要读 db/mysql/*.sql)
 COPY app ./app
