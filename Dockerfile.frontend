@@ -10,7 +10,8 @@ COPY index.html vite.config.js jsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM docker.1ms.run/library/nginx:alpine
+# nginx 走 daocloud 镜像站(1ms.run 的 nginx CDN 域名 cloudfront-docker-cf.mrs.1ms.run 解析不稳)
+FROM docker.m.daocloud.io/library/nginx:alpine
 COPY --from=build /build/dist /usr/share/nginx/html
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 

@@ -160,8 +160,48 @@ async def _step_chroma() -> str:
     return f"向量库{mode}完成: {chroma_count} → {n} 条"
 
 
+def _export_jobs_json() -> int:
+    """
+    第4步前置: 把 MySQL 在招岗位导出为 db/neo4j/jobs.json。。
+    """
+    from datetime import datetime as _dt
+    from decimal import Decimal
+
+    from sqlalchemy import create_engine, text
+
+    fields = [
+        "id", "job_code", "company_id", "title", "department", "city", "district",
+        "experience_req", "education_req", "salary_min", "salary_max", "salary_unit",
+        "salary_months", "job_type", "highlights", "advantage", "source",
+        "source_url", "source_id", "status", "publish_at", "quality_score",
+    ]
+    eng = create_engine(settings.MYSQL_DSN_SYNC)
+    try:
+        with eng.connect() as conn:
+            rows = conn.execute(
+                text(f"SELECT {', '.join(fields)} FROM jobs WHERE is_deleted = 0")
+            ).mappings().all()
+    finally:
+        eng.dispose()
+
+    def _ser(v):
+        if isinstance(v, Decimal):
+            return float(v)
+        if isinstance(v, _dt):
+            return v.strftime("%Y-%m-%d %H:%M:%S")
+        return v
+
+    data = [{k: _ser(v) for k, v in row.items()} for row in rows]
+    out = _BACKEND_DIR / "db" / "neo4j" / "jobs.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return len(data)
+
+
 def _step_neo4j_sync() -> str:
-    """第4步: 重建 Neo4j 知识图谱(同步代码, 由 to_thread 调用)。"""
+    """
+    第4步: 重建 Neo4j 知识图谱(同步代码, 由 to_thread 调用)。
+    """
     import os
 
     import scripts.init_neo4j as init_neo4j
@@ -170,8 +210,9 @@ def _step_neo4j_sync() -> str:
     if settings.NEO4J_PASSWORD:
         os.environ["NEO4J_PASSWORD"] = settings.NEO4J_PASSWORD
 
+    exported = _export_jobs_json()
     init_neo4j.main()
-    return "知识图谱(岗位+就业分析)重建完成"
+    return f"知识图谱重建完成(已从 MySQL 导出 {exported} 条岗位)"
 
 
 # ---------- 主流程 ----------

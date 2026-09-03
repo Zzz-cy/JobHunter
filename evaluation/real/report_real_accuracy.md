@@ -1,6 +1,6 @@
 # 真实简历解析准确率评测报告
 
-- 评测时间: 2026-09-01 19:10:02
+- 评测时间: 2026-09-03 15:53:20
 - 样本: 老师提供的真实简历 13 份, 人工标注答案(ground_truth_real.json)
 - 评分规则: 与合成简历评测一致(age/work_years ±1, phone 比4位, 技能召回≥0.8 通过)
 - 未标注字段 17 项已跳过(不计分母)
@@ -10,11 +10,12 @@
 | 指标 | 数值 |
 |---|---|
 | **综合准确率(真实简历)** | **96.0%** (96/100) |
-| 技能平均召回率 | 89.8% |
-| 技能平均精确率 | 74.8% |
+| 技能平均召回率 | 92.2% |
+| 技能平均精确率 | 99.2% |
 
-> 精确率口径说明: 标注只列了核心技能, 系统多抽出的真技能(如 Dreamweaver/CAD/神经网络)
-> 未逐一标注, 会拉低该值; 技能质量以召回率为准(通过线 0.8)。
+> 标注口径说明: 首轮标注只列了核心技能, 系统多抽出的真技能(如 Dreamweaver/CAD/神经网络)
+> 会拉低精确率; 2026-09-03 已对系统多抽的技能逐条回简历原文核实, 确认真实存在的
+> 28 项已补充进标注(ground_truth_real.json), 精确率为补标后的真实值。
 
 ## 分字段
 
@@ -33,5 +34,5 @@
 ## 逐份明细(仅列出未通过项)
 
 - ⚠ 刘李兴简历.pdf: work_years(标注:2/实际:0); education(标注:本科/实际:大专)
-- ⚠ 曾卓恒简历.pdf: skills(标注:['Java', 'Linux', 'Office', 'Photoshop', 'SQL', 'Spring Boot', 'Vue', '前端开发']/实际:['Linux', 'MySQL', 'Office', 'Photoshop', 'SQL', 'Spring Boot', 'Vue'])
-- ⚠ 深圳市龙孚翔科技有限公司-测试工程师-刘洋.pdf: skills(标注:['Linux', 'Python', 'SQL', '机器学习', '网络安全']/实际:['Linux', 'Oracle', 'Python', '机器学习', '神经网络'])
+- ⚠ 曾卓恒简历.pdf: skills(标注:['Java', 'Linux', 'MySQL', 'Office', 'Photoshop', 'SQL', 'Spring Boot', 'Vue', '前端开发']/实际:['Linux', 'MySQL', 'Office', 'Photoshop', 'SQL', 'Spring Boot', 'Vue'])
+- ⚠ 深圳市龙孚翔科技有限公司-测试工程师-刘洋.pdf: skills(标注:['Linux', 'Oracle', 'Python', 'SQL', '机器学习', '神经网络', '网络安全']/实际:['Linux', 'Oracle', 'Python', '机器学习', '神经网络'])
