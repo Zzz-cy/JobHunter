@@ -16,9 +16,9 @@ EVAL_DIR = Path(__file__).resolve().parent
 DATA_DIR = EVAL_DIR.parents[1] / "db" / "data"
 SAMPLE_N = 100          # 固定种子可复现
 SEED = 42
-CONCURRENCY = 5         # LLM 并发(智谱 glm-4-flash 扛得住)
+CONCURRENCY = 5
 
-EVAL_SOURCE = "jobs_raw_2.json"
+EVAL_SOURCE = "jobs_raw_1.json"
 
 
 def load_jobs():

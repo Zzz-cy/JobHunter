@@ -39,9 +39,8 @@ def fetch_real_resumes(conn):
 
 
 def gen_candidates(headers):
-    """第一步: 调推荐接口, 生成待标注 JSON + 阅读用 markdown。
-
-    有 excluded_reason 的样本(库内无对口岗)不重新生成, 保留原条目。
+    """
+    调推荐接口, 生成待标注 JSON + 阅读用 markdown。
     """
     conn = pymysql.connect(**load_db_config(), charset="utf8mb4", autocommit=True,
                            cursorclass=pymysql.cursors.DictCursor)
@@ -104,7 +103,7 @@ def gen_candidates(headers):
 
     ANSWERS.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 阅读用 markdown(不用于标注, 纯方便看)
+    # 阅读用 markdown
     lines = ["# 真实简历人岗匹配 · 标注参考", "",
              "标注请在 matching_real_answers.json 里改 relevant: true/false",
              ""]
@@ -126,7 +125,7 @@ def gen_candidates(headers):
 
 
 def score():
-    """第二步: 按人工标注算 P@5 / Top1 相关率 / MRR。"""
+    """按人工标注算 P@5 / Top1 相关率 / MRR。"""
     data = json.loads(ANSWERS.read_text(encoding="utf-8"))
 
     total_marked = total_rel = 0

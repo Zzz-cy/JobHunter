@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 """真实简历准确率评测: 人工标注答案 vs 库里解析结果。
 
-与 eval_parse.py 同一套评分规则(标量精确比对, age/work_years ±1,
-phone 比4位, 技能召回≥0.8 通过)。真实简历以上传过(标题 真实-xxx),
+与 eval_parse.py 同一套评分规则。真实简历以上传过(标题 真实-xxx),
 按标题「真实-{文件名去扩展名}」直接命中, 没有的才补传。
-
-标注文件: ground_truth_real.json (由系统抽取结果预填, 人工改错即标注;
-不确定的字段留 null, 不进分母)。
 
 前置: 8000(主后端)已启动; 8001 仅在需要补传时才要。
 """
@@ -58,7 +54,7 @@ def main():
             (f"真实-{stem}",))
         row = cur.fetchone()
 
-        # 没传过的补传一次(走完整解析链路)
+        # 没传过的补传一次，走完整解析链路
         if row is None:
             pdf = RESUMES_DIR / gt["file"]
             print(f"[{idx}/{len(gt_list)}] {gt['file']} 未上传, 补传中 ...", end=" ", flush=True)
@@ -82,7 +78,7 @@ def main():
             "WHERE rs.resume_id = %s", (row["id"],))
         got_skills = sorted(r["name"] for r in cur.fetchall())
 
-        # 标量字段: 标注为 null 的跳过(不确定不硬算)
+        # 标量字段: 标注为 null 的跳过
         detail = {}
         for field in FIELDS:
             if gt.get(field) is None:
@@ -119,7 +115,7 @@ def main():
 
     conn.close()
 
-    # ================= 报告 =================
+    # 报告
     total_ok = sum(v[0] for v in field_stat.values())
     total_all = sum(v[1] for v in field_stat.values())
     overall = total_ok / total_all if total_all else 0
