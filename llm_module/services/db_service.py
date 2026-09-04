@@ -308,6 +308,9 @@ class DatabaseService:
                 database=MYSQL_CONFIG["database"],
                 charset='utf8mb4',
                 cursorclass=pymysql.cursors.DictCursor,
+                autocommit=True,  # 必须开: 不开则启动时的 SELECT 开启永不提交的事务,
+                                  # 闲置连接一直持有元数据锁, 主后端 bootstrap 的
+                                  # CREATE DATABASE 会被堵死(MDL 锁等待)
             )
             self.cursor = self.conn.cursor()
             logger.info(f"MySQL连接成功: {MYSQL_CONFIG['host']}:{MYSQL_CONFIG['port']}")

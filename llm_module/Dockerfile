@@ -31,11 +31,11 @@ COPY . .
 RUN mkdir -p /app/data/persist /app/data/export /app/data/vector_db /app/logs
 
 # 暴露端口
-EXPOSE 5173
+EXPOSE 8001
 
-# 健康检查
+# 健康检查(服务实际监听 8001, 原来误写 5173 导致永远 unhealthy)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5173/api/v1/health/live')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/api/v1/health/live')" || exit 1
 
 # 启动命令
 CMD ["python", "-m", "api.main"]
