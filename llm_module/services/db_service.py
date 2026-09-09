@@ -262,7 +262,7 @@ class DatabaseService:
     def __init__(self):
         self.use_mysql = MYSQL_AVAILABLE and self._test_mysql_connection()
         self.conn = None
-        self.cursor = None
+        self._cursor = None  # 内部游标, 一律经 self.cursor 属性访问(断连自动重连)
 
         # MySQL使用%s占位符，SQLite使用?占位符
         self._placeholder = "%s" if self.use_mysql else "?"
@@ -273,6 +273,24 @@ class DatabaseService:
             self._init_sqlite()
 
         self._create_tables()
+
+    @property
+    def cursor(self):
+        """取游标前自动保活: MySQL 会杀掉空闲超过 wait_timeout(默认8小时)的连接,
+        本服务是单例长连接, 若不重连则闲置一夜之后所有查询永远报 (0, '') 死连接错误
+        (症状: AI顾问能聊天但简历画像/岗位检索全部静默降级, 推荐卡片消失)。
+        ping(reconnect=True) 在同一连接对象上重建 socket; pymysql 游标按调用
+        委托给连接对象, 重连后原游标继续可用, 无需重建。SQLite 无此问题, 跳过。"""
+        if self.use_mysql and self.conn is not None:
+            try:
+                self.conn.ping(reconnect=True)
+            except Exception as e:
+                logger.warning(f"MySQL保活重连失败(本次查询将降级): {e}")
+        return self._cursor
+
+    @cursor.setter
+    def cursor(self, value):
+        self._cursor = value
 
     def _q(self, sql: str) -> str:
         """将SQL中的?占位符转换为当前数据库的占位符"""
