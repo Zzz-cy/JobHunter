@@ -38,7 +38,7 @@ services:
       LLM_SERVICE_URL: http://llm:8001
     volumes:
       - ./db/data:/app/db/data:ro     # 爬虫数据文件(bootstrap 导入用)
-      - chroma_data:/app/storage      # ChromaDB 向量持久化
+      - chroma_data:/app/db/chroma    # ChromaDB 向量持久化(与 config.py CHROMA_PATH 对应)
       - uploads_data:/app/uploads     # 用户上传的简历
     depends_on:
       mysql:

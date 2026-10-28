@@ -27,8 +27,8 @@
 ```
 JobHunter/  (main 分支)
 ├── app/              后端 FastAPI(含 core/api/services/models)
-├── db/               建表脚本 + 数据文件 + 文档(ES/爬虫/Schema)
-├── docs/             开发文档
+├── db/               建表脚本 + 数据文件 + 文档(ES/爬虫/Schema) + chroma/(向量库持久化,不进库)
+├── docs/             文档(开发/ 开发文档 + 作品材料/ 比赛评审用)
 ├── evaluation/       双层评测套件(synthetic 合成集 / real 真实集 / jd 交叉验证, 含报告)
 ├── scripts/          同步/初始化脚本(ES/Neo4j/向量库/MySQL导入)
 ├── src/ index.html package.json   前端 Vue 3
@@ -47,7 +47,73 @@ git clone https://github.com/Zzz-cy/JobHunter.git
 
 ---
 
-## 二、后端启动
+## 二、部署（二选一）
+
+### 方式 A · Docker 部署（推荐，零本地依赖）
+
+> 只需要装 Docker Desktop，Python/Node/MySQL/ES/Neo4j 全部运行在容器内。
+> 功能演示路径 / 评测材料 / 爬虫重新采集数据等更完整内容见 `docs/开发/部署文档.md`。
+
+#### 1. 装 Docker
+
+- Windows/Mac：装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（装完启动它）
+  - Windows 注意：Settings → Resources 内存给到 **6GB** 以上（ES+Neo4j+MySQL 是内存大户）
+- Linux：`sudo apt install -y docker.io docker-compose-v2`
+
+#### 2. 拿到两个不进 git 的东西
+
+找开发者要，放到项目根目录：
+
+```
+.env              # 智谱/DeepSeek key、MySQL/Neo4j 密码
+db/data/*.json    # 岗位爬虫数据(演示导入用)
+```
+
+#### 3. 一键启动
+
+```bash
+docker compose up -d --build     # 首次构建约 5~10 分钟
+docker compose ps                # 确认 6 个容器都 Up：frontend(80) / backend / llm / mysql / elasticsearch / neo4j
+```
+
+#### 4. 初始化（四库一条链路）
+
+```bash
+curl -X POST http://localhost/crawl/bootstrap
+# Windows 没有 curl 就用浏览器: 打开 http://localhost → 登录管理员 → 数据管理页 → 点「一键同步所有库」
+```
+
+完成后浏览器打开 `http://localhost`（云服务器就是 `http://服务器IP`），用种子账号登录（密码 `123456`，详见 `docs/开发/TEST_ACCOUNTS.md`）。
+
+#### 5. 常用命令
+
+```bash
+docker compose logs -f backend      # 看主后端日志
+docker compose logs -f llm          # 看简历解析服务日志
+docker compose down                 # 停止(数据保留在卷里)
+docker compose down -v              # 停止并清空所有数据(重置演示)
+```
+
+#### 6. 上云服务器
+
+文件原样传上去（git clone + scp 上面第 2 步的两个东西），安全组/防火墙只开 **80 端口**。
+
+#### 7. 排错速查
+
+| 现象 | 原因 |
+|---|---|
+| build 拉镜像超时 | 国内网络问题：Docker Desktop → Settings → Docker Engine 加 `"registry-mirrors": ["https://docker.1ms.run"]` |
+| ES 容器一直重启 | 内存不够：Settings → Resources 内存加大；或 compose 里 ES_JAVA_OPTS 改 `-Xms256m -Xmx256m` |
+| 图谱页转圈 | Neo4j 没起来没关系，页面会降级为演示数据；内存实在不够可把 compose 里 neo4j 整段注释掉 |
+| 前端刷新 404 | nginx.conf 的 try_files 回退已处理，正常不应出现 |
+
+### 方式 B · 本地部署（开发调试）
+
+裸跑三个服务，适合日常开发：后端（见「三、后端启动」）→ LLM 模块（见「四、LLM 模块启动」）→ 前端（见「五、前端启动」）。
+
+---
+
+## 三、后端启动
 
 ### 1. 环境要求
 
@@ -116,7 +182,7 @@ python -m scripts.init_neo4j          # Neo4j 图谱
 | `13900000001` | 求职者A | 演示主力：自带解析好的简历/技能/投递记录，直接看推荐与求职进度 |
 | `13900000002` | 新用户 | 空白账号：演示上传简历 → AI 解析 → 生成推荐的完整新手旅程 |
 
-> 各账号的详细演示路径见 `docs/TEST_ACCOUNTS.md`。
+> 各账号的详细演示路径见 `docs/开发/TEST_ACCOUNTS.md`。
 
 ### 5. 验证连接
 
@@ -138,7 +204,7 @@ python run.py
 
 ---
 
-## 二·五、LLM 模块启动
+## 四、LLM 模块启动
 
 简历 AI 解析服务（Python/FastAPI，独立于主后端），主后端通过 HTTP 调用它解析简历。
 
@@ -163,7 +229,7 @@ python -m api.main
 
 ---
 
-## 三、前端启动
+## 五、前端启动
 
 ### 1. 环境要求
 
@@ -201,7 +267,7 @@ npm run preview     # 本地预览构建产物
 
 ---
 
-## 四、常见问题
+## 六、常见问题
 
 **Q：前端启动后接口全部 404 / 跨域**
 
@@ -209,7 +275,7 @@ npm run preview     # 本地预览构建产物
 
 ---
 
-## 五、页面/接口速览
+## 七、页面/接口速览
 
 ### 前端路由
 
@@ -268,7 +334,7 @@ python evaluation/jd/eval_jd_parse.py               # 抽100条JD核验 → repo
 
 ---
 
-## 六、团队协作（单分支 main）
+## 八、团队协作（单分支 main）
 
 > 项目前期按 frontend / backend / llm_model 分支分离开发，现已全部合并进 `main`。
 > **统一在 main 分支提交**，无需切分支、无需多目录。

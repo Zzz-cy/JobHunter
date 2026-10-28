@@ -2,7 +2,7 @@
 .git
 node_modules
 dist
-storage
+db/chroma           # 运行时 compose 挂载, 不打进镜像
 uploads
 db/data            # 运行时 compose 挂载, 不打进镜像
 .venv

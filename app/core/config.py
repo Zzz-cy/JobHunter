@@ -105,7 +105,7 @@ class Settings(BaseSettings):
     @property
     def CHROMA_PATH(self) -> Path:
         """ChromaDB 持久化目录(跟着 BASE_DIR 走, 项目移动自动适配)。"""
-        return BASE_DIR / "storage" / "chroma"
+        return BASE_DIR / "db" / "chroma"
 
 
 @lru_cache

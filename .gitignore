@@ -62,7 +62,7 @@ media/
 *.db
 
 # 向量库(ChromaDB 持久化文件, 138MB+ 二进制, 可用 scripts/build_job_vectors.py 重建)
-storage/
+db/chroma/
 
 # Windows 误创建的 nul 文件
 nul
@@ -119,3 +119,12 @@ evaluation/real/ground_truth_real.json
 DEPLOY_HANDOFF.md
 
 pa/
+# 待裁决隔离区（禁删令）
+old/
+
+# Agent 工作流文件(个人工作台, 不进版本库; 限根目录, 不影响 llm_module/TODO.md)
+/TODO.md
+/BACKLOG.md
+/AGENT.md
+/pitfalls.md
+/designs/
