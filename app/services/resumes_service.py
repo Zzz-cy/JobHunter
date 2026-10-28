@@ -165,7 +165,11 @@ async def call_llm_parse(file_path: str, resume_id: int, source_type: str) -> di
         "file_type": source_type,  # pdf / image
     }
     try:
-        async with httpx.AsyncClient() as client:
+        # trust_env=False: 本机服务间调用不走系统代理。
+        # 否则 Windows 开着系统代理(如 Watt Toolkit/加速器)时, httpx 会经
+        # urllib.getproxies() 读到注册表代理, localhost:8001 的请求被转发给
+        # 代理导致 502 Bad Gateway / 连接被重置。
+        async with httpx.AsyncClient(trust_env=False) as client:
             resp = await client.post(
                 f"{settings.LLM_SERVICE_URL}/agents/analyze-resume",
                 json=payload,
