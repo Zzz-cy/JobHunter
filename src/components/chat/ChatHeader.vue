@@ -18,6 +18,7 @@
         <div class="status-dot"></div>
         <span>{{ modelStatus }}</span>
       </div>
+      <router-link to="/job-recommend" class="recommend-btn">岗位推荐</router-link>
       <router-link v-if="isAdmin" to="/admin" class="admin-link" title="Agent 监控后台">📊</router-link>
     </div>
   </div>
@@ -127,6 +128,22 @@ const { isAdmin } = storeToRefs(useUserStore())
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+.recommend-btn {
+  padding: 6px 16px;
+  background: white;
+  color: #667eea;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.recommend-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .admin-link {
