@@ -8,7 +8,7 @@
       </div>
 
       <!-- 导航菜单 -->
-      <!-- 不关 ellipsis: 菜单项过多时自动折叠进「···」, 防止挤压右侧用户区 -->
+      <!-- 不关 ellipsis: 窄窗口放不下时自动折叠进「···」, 防止挤压右侧用户区 -->
       <el-menu
         :default-active="activeMenu"
         mode="horizontal"
@@ -98,7 +98,6 @@ const { isLoggedIn, userInfo, username, isAdmin } = storeToRefs(userStore)
 const activeMenu = computed(() => {
   const path = route.path
   if (path.startsWith('/jobs')) return '/jobs'
-  if (path.startsWith('/resume')) return '/resume'
   if (path.startsWith('/data-admin')) return '/data-admin'
   return path
 })
@@ -155,15 +154,6 @@ const handleCommand = async (cmd) => {
   flex: 1;
   min-width: 0;   /* 允许收缩, ellipsis 折叠才会触发 */
   border-bottom: none !important;
-}
-
-/* 菜单项多, 左右边距收窄一点 */
-.nav-menu :deep(.el-menu-item) {
-  padding: 0 14px;
-}
-
-.nav-menu :deep(.el-menu-item .el-icon) {
-  margin-right: 2px;
 }
 
 .user-area {
