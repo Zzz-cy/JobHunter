@@ -57,11 +57,7 @@
 
         <el-select v-model="filters.salaryRange" placeholder="薪资" clearable style="width: 160px">
           <el-option label="不限" value="" />
-          <el-option label="10K 以下" value="0-10" />
-          <el-option label="10-20K" value="10-20" />
-          <el-option label="20-30K" value="20-30" />
-          <el-option label="30-50K" value="30-50" />
-          <el-option label="50K 以上" value="50-" />
+          <el-option v-for="s in salaryOptions" :key="s.value" :label="s.label" :value="s.value" />
         </el-select>
 
         <el-select v-model="filters.source" placeholder="来源" clearable style="width: 140px">
@@ -178,29 +174,34 @@ import { useRouter, useRoute } from 'vue-router'
 import { Search, Star, Document } from '@element-plus/icons-vue'
 import JobCard from '@/components/common/JobCard.vue'
 import { useJobStore } from '@/stores/job'
+import { useUserStore } from '@/stores/user'
+import { cityOptions, salaryOptions } from '@/constants/filterOptions'
 
 const router = useRouter()
 const route = useRoute()
 const jobStore = useJobStore()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const total = ref(0)
 const jobList = ref([])
 const sortBy = ref('latest')
 
+// 期望预填: 已建档用户进本页时按首登建档的期望预填筛选项(query 优先于期望)
+const expected = userStore.userInfo?.onboarded === true ? userStore.userInfo : {}
+
 const filters = reactive({
-  keyword: route.query.keyword || '',
-  city: '',
+  keyword: route.query.keyword || expected.expected_job || '',
+  city: route.query.city || expected.expected_city || '',
   experience: '',
   education: '',
   industry: '',
-  salaryRange: '',
+  salaryRange: route.query.salaryRange || expected.expected_salary || '',
   source: '',
   page: 1,
   pageSize: 10
 })
 
-const cityOptions = ['北京', '上海', '深圳', '广州', '杭州', '成都', '南京', '武汉', '西安', '苏州', '其他']
 const experienceOptions = ['应届', '1-3年', '3-5年', '5-10年', '10年以上', '不限']
 const educationOptions = ['大专', '本科', '硕士', '博士', '不限']
 

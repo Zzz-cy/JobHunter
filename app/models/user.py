@@ -27,6 +27,14 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     nickname: Mapped[str | None] = mapped_column(String(64))
     avatar_url: Mapped[str | None] = mapped_column(String(512))
 
+    # 求职期望(首登引导建档收集)
+    expected_city: Mapped[str | None] = mapped_column(String(20))
+    expected_job: Mapped[str | None] = mapped_column(String(50))
+    expected_salary: Mapped[str | None] = mapped_column(String(10))
+
+    # 是否已完成首登引导建档(0=否, 1=是)
+    onboarded: Mapped[int] = mapped_column(nullable=False, default=0)
+
     # 角色
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
 

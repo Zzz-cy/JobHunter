@@ -151,10 +151,13 @@ const handleSubmit = async () => {
       localStorage.removeItem('rememberAccount')
     }
 
-    // 4. 跳转
+    // 4. 跳转: 未完成首登建档优先去引导页, 否则走 redirect/首页
     ElMessage.success('登录成功')
-    const redirect = route.query.redirect || '/home'
-    router.push(redirect)
+    if (userStore.userInfo?.onboarded === false) {
+      router.push('/onboarding')
+    } else {
+      router.push(route.query.redirect || '/home')
+    }
   } catch (err) {
     console.error(err)
   } finally {

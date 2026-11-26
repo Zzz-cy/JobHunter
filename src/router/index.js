@@ -16,6 +16,13 @@ const routes = [
     meta: { title: '注册', requiresAuth: false }
   },
   {
+    // 首登引导建档: 顶层路由不套 MainLayout => 全屏无导航栏
+    path: '/onboarding',
+    name: 'Onboarding',
+    component: () => import('@/views/Onboarding.vue'),
+    meta: { title: '完善求职期望', requiresAuth: true }
+  },
+  {
     path: '/',
     component: MainLayout,
     redirect: '/home',
@@ -127,6 +134,17 @@ router.beforeEach((to, from, next) => {
   }
   // 2. 需要管理员权限但不是管理员 → 跳首页(防止直接输 URL 访问)
   if (to.meta.requireAdmin && !userStore.isAdmin) {
+    next({ name: 'Home' })
+    return
+  }
+  // 3. 首登引导建档门禁: 未建档的登录用户只能停在引导页(无跳过, 堵 URL 逃逸)
+  const isOnboarding = to.name === 'Onboarding'
+  if (isLoggedIn && userStore.userInfo?.onboarded === false && !isOnboarding) {
+    next({ name: 'Onboarding' })
+    return
+  }
+  // 4. 已建档用户不该停在引导页 → 回首页(引导页自身放行在 3 之后, 不会死循环)
+  if (isOnboarding && isLoggedIn && userStore.userInfo?.onboarded !== false) {
     next({ name: 'Home' })
     return
   }

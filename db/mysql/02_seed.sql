@@ -154,10 +154,10 @@ ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
 
 -- ---- 测试账号(三个, 密码都是 123456) ----
 -- id=1 管理员 / id=2 求职者A(03_mock 会给它简历, 用于演示推荐) / id=3 新用户(空白, 演示首次使用流程)
-INSERT INTO `users` (`user_code`,`phone`,`email`,`password_hash`,`nickname`,`role`) VALUES
-('U_ADMIN_001','13800000000','admin@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','管理员','admin'),
-('U_USER_001','13900000001','user1@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','求职者A','user'),
-('U_USER_002','13900000002','user2@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','新用户','user')
+INSERT INTO `users` (`user_code`,`phone`,`email`,`password_hash`,`nickname`,`role`,`expected_city`,`expected_job`,`expected_salary`,`onboarded`) VALUES
+('U_ADMIN_001','13800000000','admin@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','管理员','admin',NULL,NULL,NULL,1),
+('U_USER_001','13900000001','user1@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','求职者A','user','北京','Python','30-50',1),
+('U_USER_002','13900000002','user2@jobhunter.local','$2b$12$GIR0SJJK4lQ80K7dFg1Zvu16GU4yUzUeCeuB/guTPb1HGznoO3ZUC','新用户','user',NULL,NULL,NULL,0)
 ON DUPLICATE KEY UPDATE `nickname`=VALUES(`nickname`), `password_hash`=VALUES(`password_hash`);
 
 

@@ -6,8 +6,8 @@ from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models import User, Application, Job
 from app.schemas import Result, UserOut, JobOut
-from app.schemas.user import UserUpdateSchema, applicationOut, applicationSchema
-from app.services.user_service import update_user, seek_favorites
+from app.schemas.user import UserUpdateSchema, OnboardingSchema, applicationOut, applicationSchema
+from app.services.user_service import update_user, seek_favorites, complete_onboarding
 from app.utils.jwtUtil import get_current_user
 
 router = APIRouter(prefix="/user", tags=["用户接口"])
@@ -25,6 +25,16 @@ async def change_user(
 @router.get("/me", response_model=Result[UserOut], summary="获取当前用户信息")
 async def get_me(current_user: User = Depends(get_current_user)):
     return Result.success(data=UserOut.model_validate(current_user))
+
+@router.post("/onboarding", response_model=Result[UserOut], summary="提交首登引导建档(期望城市/职位/薪资)")
+async def submit_onboarding(
+        data: OnboardingSchema,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """已建档账号重复提交会被拒绝(每账号仅一次)。"""
+    user_obj = await complete_onboarding(data, db, current_user.id)
+    return Result.success(data=UserOut.model_validate(user_obj), message="建档完成")
 
 @router.get("/applications/favorites", response_model=Result[list[JobOut]], summary="获取当前用户收藏的职位")
 async def get_favorites(

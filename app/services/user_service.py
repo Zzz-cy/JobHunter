@@ -3,8 +3,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ParamError
 from app.models import User, Application, Job
-from app.schemas.user import UserUpdateSchema
+from app.schemas.user import UserUpdateSchema, OnboardingSchema
 from app.utils.pwdUtil import hash_password, verify_password
+
+
+async def complete_onboarding(
+        data: OnboardingSchema,
+        db: AsyncSession,
+        user_id: int
+) -> User:
+    """首登引导建档: 写入期望三项并置 onboarded 标记(每账号仅一次)。"""
+    user_obj = await db.get(User, user_id)
+    if not user_obj:
+        raise ParamError("用户不存在")
+    if user_obj.onboarded:
+        raise ParamError("已完成建档, 不能重复提交")
+
+    user_obj.expected_city = data.expected_city
+    user_obj.expected_job = data.expected_job
+    user_obj.expected_salary = data.expected_salary
+    user_obj.onboarded = 1
+    await db.commit()
+    await db.refresh(user_obj)
+    return user_obj
 
 
 async def update_user(

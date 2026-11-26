@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field
 
@@ -12,6 +13,15 @@ class UserUpdateSchema(ORMOut):
     email: str | None = Field(default=None, pattern=r"^[\w.+-]+@[\w-]+\.[\w.-]+$")
     old_password: str | None = Field(default=None, min_length=6, max_length=64)
     new_password: str | None = Field(default=None, min_length=6, max_length=64)
+
+
+class OnboardingSchema(SchemaBase):
+    """首登引导建档入参(期望城市/职位/薪资三项必填)。"""
+    expected_city: str = Field(min_length=1, max_length=20, description="期望城市")
+    expected_job: str = Field(min_length=1, max_length=50, description="期望职位")
+    expected_salary: Literal["0-10", "10-20", "20-30", "30-50", "50-"] = Field(
+        description="期望薪资档位"
+    )
 
 
 # 求职进度出参(Application → Job → Company 嵌套结构)

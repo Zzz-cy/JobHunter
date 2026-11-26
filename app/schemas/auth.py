@@ -76,6 +76,10 @@ class UserOut(SchemaBase):
     email: str | None = None
     nickname: str | None = None
     avatar_url: str | None = None
+    expected_city: str | None = None
+    expected_job: str | None = None
+    expected_salary: str | None = None
+    onboarded: bool = False
     role: str = "user"
     created_at: datetime | None = None
 
