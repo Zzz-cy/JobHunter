@@ -288,6 +288,7 @@ npm run preview     # 本地预览构建产物
 | `/job-definitions` | 岗位发现（两步 LLM 发现新岗位并生成画像，管理员可触发/人工修正） | 否（操作需管理员） |
 | `/resume` | 简历管理（上传 + AI 解析） | 是 |
 | `/dashboard` | 数据分析大盘（新兴技能发现/需求飙升榜/技能趋势与演化，ECharts） | 否 |
+| `/admin-users` | 账号管理（用户列表/搜索/设权/封禁解封） | 管理员 |
 | `/knowledge-graph` | 知识图谱（Neo4j 岗位方向画像，力导向图） | 否 |
 | `/recommend` | AI 求职顾问（对话式，管理员可从此进 Agent 监控后台） | 是 |
 | `/admin` | Agent 监控后台 | 管理员 |

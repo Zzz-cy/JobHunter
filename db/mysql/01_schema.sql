@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `expected_salary` VARCHAR(10)  DEFAULT NULL COMMENT '期望薪资档位(0-10/10-20/20-30/30-50/50-)',
     `onboarded`       TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否已完成首登引导建档 0=否 1=是',
     `role`          VARCHAR(16)  NOT NULL DEFAULT 'user' COMMENT 'user/admin',
+    `status`        VARCHAR(16)  NOT NULL DEFAULT 'normal' COMMENT '账号状态 normal=正常 banned=已封禁',
     `last_login_at` DATETIME     DEFAULT NULL,
     `is_deleted`    TINYINT(1)   NOT NULL DEFAULT 0,
     `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

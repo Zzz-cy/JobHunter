@@ -53,3 +53,10 @@ class ParamError(BizException):
 
     def __init__(self, message: str = "参数错误"):
         super().__init__(message, code=BizCode.PARAM_ERROR)
+
+
+class AccountDisabledError(BizException):
+    """账号已被封禁(用户模块业务码 202)。"""
+
+    def __init__(self, message: str = "账号已被封禁"):
+        super().__init__(message, code=BizCode.USER_DISABLED)

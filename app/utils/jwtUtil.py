@@ -68,6 +68,13 @@ async def get_current_user(
     user = await db.scalar(select(User).where(User.id == int(user_id)))
     if user is None:
         raise credentials_exception
+    # 封禁账号: 已签发的 token 也立即失效(前端 401 拦截器会自动登出)
+    if user.status == "banned":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="账号已被封禁",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 

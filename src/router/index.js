@@ -98,6 +98,13 @@ const routes = [
         meta: { title: '个人中心', requiresAuth: true, userPage: true }
       },
       {
+        // 账号管理: 用户列表 / 设权 / 封禁解封 (仅管理员)
+        path: 'admin-users',
+        name: 'AdminUsers',
+        component: () => import('@/views/AdminUsers.vue'),
+        meta: { title: '账号管理', requiresAuth: true, requireAdmin: true }
+      },
+      {
         path: 'data-admin',
         name: 'DataAdmin',
         component: () => import('@/views/DataAdmin.vue'),

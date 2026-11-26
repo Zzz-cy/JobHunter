@@ -43,7 +43,11 @@ request.interceptors.response.use(
     return res.data
   },
   (error) => {
-    const message = error.response?.data?.message || error.message || '网络异常'
+    // FastAPI HTTPException 的说明在 detail 里(如封禁被踢: "账号已被封禁"), 优先展示
+    const message = error.response?.data?.detail
+      || error.response?.data?.message
+      || error.message
+      || '网络异常'
     ElMessage.error(message)
 
     // 401 未登录或登录过期

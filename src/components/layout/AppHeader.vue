@@ -15,9 +15,12 @@
         router
         class="nav-menu"
       >
-        <!-- 管理员: 数据分析(含技能转正) / 岗位发现 / 数据管理 / 监控后台
-             定稿顺序里还有「账号管理」, 随账号管理页上线再加(避免死链) -->
+        <!-- 管理员: 账号管理 / 数据分析(含技能转正) / 岗位发现 / 数据管理 / 监控后台(定稿顺序) -->
         <template v-if="isAdmin">
+          <el-menu-item index="/admin-users">
+            <el-icon><UserFilled /></el-icon>
+            <span>账号管理</span>
+          </el-menu-item>
           <el-menu-item index="/dashboard">
             <el-icon><DataAnalysis /></el-icon>
             <span>数据分析</span>

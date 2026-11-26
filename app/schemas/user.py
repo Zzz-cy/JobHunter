@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import Field
 
 from app.schemas import ORMOut, SchemaBase
+from app.schemas.page import PageParams
 
 
 class UserUpdateSchema(ORMOut):
@@ -22,6 +23,40 @@ class OnboardingSchema(SchemaBase):
     expected_salary: Literal["0-10", "10-20", "20-30", "30-50", "50-"] = Field(
         description="期望薪资档位"
     )
+
+
+# ============================================================
+# 账号管理(管理员)
+# ============================================================
+class AdminUserQuery(PageParams, ORMOut):
+    """账号管理用户列表查询入参(keyword 匹配昵称或手机号)。"""
+
+    keyword: str | None = Field(default=None, max_length=64, description="昵称或手机号(模糊)")
+
+
+class AdminUserOut(ORMOut):
+    """账号管理用户列表出参(只含列表需要的字段, 不含密码/邮箱)。"""
+
+    id: int
+    nickname: str | None = None
+    phone: str | None = None
+    role: str
+    status: str
+    created_at: datetime | None = None
+    last_login_at: datetime | None = None
+    onboarded: bool = False
+
+
+class AdminUserRoleSchema(SchemaBase):
+    """设为/收回管理员入参。"""
+
+    role: Literal["admin", "user"] = Field(description="目标角色")
+
+
+class AdminUserStatusSchema(SchemaBase):
+    """封禁/解封入参。"""
+
+    status: Literal["normal", "banned"] = Field(description="目标状态")
 
 
 # 求职进度出参(Application → Job → Company 嵌套结构)

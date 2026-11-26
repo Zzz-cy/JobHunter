@@ -1,9 +1,9 @@
-from sqlalchemy import update, select
+from sqlalchemy import update, select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ParamError
+from app.core.exceptions import NotFoundError, ParamError
 from app.models import User, Application, Job
-from app.schemas.user import UserUpdateSchema, OnboardingSchema
+from app.schemas.user import UserUpdateSchema, OnboardingSchema, AdminUserQuery
 from app.utils.pwdUtil import hash_password, verify_password
 
 
@@ -91,3 +91,65 @@ async def seek_favorites(
     )
     job_result = await db.execute(job_stmt)
     return job_result.scalars().all()
+
+
+# ============================================================
+# 账号管理(管理员)
+# ============================================================
+async def query_admin_users(
+        params: AdminUserQuery,
+        db: AsyncSession,
+) -> tuple[list[User], int]:
+    """按昵称/手机号模糊搜索的用户分页列表(排除软删除), 返回 (当前页, 总数)。"""
+    conditions = [User.is_deleted == 0]
+    if params.keyword:
+        kw = f"%{params.keyword.strip()}%"
+        conditions.append(or_(User.nickname.like(kw), User.phone.like(kw)))
+
+    total = await db.scalar(select(func.count()).select_from(User).where(*conditions))
+    result = await db.execute(
+        select(User)
+        .where(*conditions)
+        .order_by(User.created_at.desc(), User.id.desc())
+        .limit(params.page_size)
+        .offset(params.offset)
+    )
+    return list(result.scalars().all()), total or 0
+
+
+async def _get_active_user(user_id: int, db: AsyncSession) -> User:
+    """取未被软删除的目标用户, 不存在则 404。"""
+    user_obj = await db.scalar(
+        select(User).where(User.id == user_id, User.is_deleted == 0)
+    )
+    if not user_obj:
+        raise NotFoundError("用户不存在")
+    return user_obj
+
+
+async def set_user_role(
+        user_id: int,
+        role: str,
+        db: AsyncSession,
+        operator_id: int,
+) -> None:
+    """设为/收回管理员。不能操作自己(防止自降权限把自己锁在管理端外)。"""
+    if user_id == operator_id:
+        raise ParamError("不能操作自己的账号")
+    user_obj = await _get_active_user(user_id, db)
+    user_obj.role = role
+    await db.commit()
+
+
+async def set_user_status(
+        user_id: int,
+        status: str,
+        db: AsyncSession,
+        operator_id: int,
+) -> None:
+    """封禁/解封账号。不能操作自己。"""
+    if user_id == operator_id:
+        raise ParamError("不能操作自己的账号")
+    user_obj = await _get_active_user(user_id, db)
+    user_obj.status = status
+    await db.commit()

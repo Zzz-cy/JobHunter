@@ -3,6 +3,12 @@ from app.schemas.base import ORMOut, SchemaBase
 from app.schemas.page import PageParams, PageResult
 from app.schemas.result import BizCode, Result
 from app.schemas.auth import RegisterSchema, LoginSchema, LoginOut, UserOut
+from app.schemas.user import (
+    AdminUserQuery,
+    AdminUserOut,
+    AdminUserRoleSchema,
+    AdminUserStatusSchema,
+)
 from app.schemas.jobs import JobSearchSchema, CompanyBrief, JobSkillOut, JobOut
 from app.schemas.stats import OverviewOut
 
@@ -21,6 +27,11 @@ __all__ = [
     "LoginOut",
     # ---- 获取用户信息 ----
     "UserOut",
+    # ---- 账号管理(管理员) ----
+    "AdminUserQuery",
+    "AdminUserOut",
+    "AdminUserRoleSchema",
+    "AdminUserStatusSchema",
     # ---- 获取工作信息 ----
     "JobSearchSchema",
     "CompanyBrief",

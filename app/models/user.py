@@ -1,4 +1,6 @@
 """User 用户模型。"""
+from datetime import datetime
+
 from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -38,8 +40,11 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     # 角色
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
 
+    # 账号状态(normal=正常, banned=已封禁; 封禁后不能登录, 在线会话下一次请求即失效)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")
+
     # 活跃度
-    last_login_at: Mapped[str | None] = mapped_column(DateTime)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     # 关系(1:N 简历)
     # lazy="selectin" 表示查询 user 时自动把 resumes 一起查出来(避免 N+1)

@@ -128,8 +128,13 @@ level=1  IT       "互联网/IT"   parent_id=NULL
 | `password_hash` | VARCHAR(128) | NO | — | — | bcrypt 哈希（长度 ≥60，预留空间） |
 | `nickname` | VARCHAR(64) | YES | NULL | — | 昵称，前端展示用 |
 | `avatar_url` | VARCHAR(512) | YES | NULL | — | 头像 URL |
+| `expected_city` | VARCHAR(20) | YES | NULL | — | 期望城市（首登引导建档） |
+| `expected_job` | VARCHAR(50) | YES | NULL | — | 期望职位（首登引导建档） |
+| `expected_salary` | VARCHAR(10) | YES | NULL | — | 期望薪资档位（0-10/10-20/20-30/30-50/50-） |
+| `onboarded` | TINYINT(1) | NO | 0 | — | 是否已完成首登引导建档（0=否，1=是） |
 | `role` | VARCHAR(16) | NO | 'user' | MUL | 角色：`user`（求职者）/ `admin`（管理员），预留 RBAC 扩展 |
-| `last_login_at` | DATETIME | YES | NULL | — | 最近登录时间，用于活跃度统计 |
+| `status` | VARCHAR(16) | NO | 'normal' | — | 账号状态：`normal`（正常）/ `banned`（已封禁）；封禁后不能登录，在线会话下一次请求即失效 |
+| `last_login_at` | DATETIME | YES | NULL | — | 最近登录时间，登录成功时写入 |
 | `is_deleted` | TINYINT(1) | NO | 0 | — | 软删除标记（0=正常，1=已删除） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | — | 注册时间 |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | — | 更新时间 |

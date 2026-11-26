@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, ParamError, NotFoundError
+from app.core.exceptions import AccountDisabledError, ConflictError, ParamError, NotFoundError
 from app.models import User
 from app.schemas import RegisterSchema, LoginSchema, UserOut, LoginOut
 from app.utils.jwtUtil import create_access_token
@@ -57,6 +59,11 @@ async def login(user: LoginSchema, db: AsyncSession):
     # 检查密码是否正确
     if not verify_password(user.password, existing.password_hash):
         raise NotFoundError("用户名或密码错误")
+    # 封禁账号拒绝登录(密码校验通过后再判, 不向未知方泄露账号状态)
+    if existing.status == "banned":
+        raise AccountDisabledError("账号已被封禁，请联系管理员")
+    existing.last_login_at = datetime.now()
+    await db.commit()
     user_out = UserOut.model_validate(existing)
 
     return LoginOut(

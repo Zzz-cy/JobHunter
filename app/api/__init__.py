@@ -1,5 +1,6 @@
 """API 路由聚合包: 各模块的 router 统一收集到 routers, main.py 循环挂载。"""
 from app.api.auth import router as auth_router
+from app.api.admin_users import router as admin_users_router
 from app.api.crawl import router as crawl_router
 from app.api.jobs import router as jobs_router
 from app.api.recommend import router as recommend_router
@@ -15,6 +16,7 @@ routers = [
     jobs_router,
     resumes_router,
     user_router,
+    admin_users_router,
     crawl_router,
     stats_router,
     job_definitions_router,
