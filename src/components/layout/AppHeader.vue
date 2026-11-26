@@ -7,42 +7,62 @@
         <span class="logo-text">JobHunter</span>
       </div>
 
-      <!-- 导航菜单 -->
-      <!-- 不关 ellipsis: 窄窗口放不下时自动折叠进「···」, 防止挤压右侧用户区 -->
+      <!-- 导航菜单: 按角色出两套(管理员只做管理, 不求职)
+           不关 ellipsis: 窄窗口放不下时自动折叠进「···」, 防止挤压右侧用户区 -->
       <el-menu
         :default-active="activeMenu"
         mode="horizontal"
         router
         class="nav-menu"
       >
-        <el-menu-item index="/home">
-          <el-icon><HomeFilled /></el-icon>
-          <span>首页</span>
-        </el-menu-item>
-        <el-menu-item index="/jobs">
-          <el-icon><Search /></el-icon>
-          <span>找职位</span>
-        </el-menu-item>
-        <el-menu-item index="/recommend">
-          <el-icon><MagicStick /></el-icon>
-          <span>AI 求职顾问</span>
-        </el-menu-item>
-        <el-menu-item index="/job-definitions">
-          <el-icon><Compass /></el-icon>
-          <span>岗位发现</span>
-        </el-menu-item>
-        <el-menu-item index="/knowledge-graph">
-          <el-icon><Connection /></el-icon>
-          <span>知识图谱</span>
-        </el-menu-item>
-        <el-menu-item index="/dashboard">
-          <el-icon><DataAnalysis /></el-icon>
-          <span>数据分析</span>
-        </el-menu-item>
-        <el-menu-item index="/data-admin" v-if="isAdmin">
-          <el-icon><DataLine /></el-icon>
-          <span>数据管理</span>
-        </el-menu-item>
+        <!-- 管理员: 数据分析(含技能转正) / 岗位发现 / 数据管理 / 监控后台
+             定稿顺序里还有「账号管理」, 随账号管理页上线再加(避免死链) -->
+        <template v-if="isAdmin">
+          <el-menu-item index="/dashboard">
+            <el-icon><DataAnalysis /></el-icon>
+            <span>数据分析</span>
+          </el-menu-item>
+          <el-menu-item index="/job-definitions">
+            <el-icon><Compass /></el-icon>
+            <span>岗位发现</span>
+          </el-menu-item>
+          <el-menu-item index="/data-admin">
+            <el-icon><DataLine /></el-icon>
+            <span>数据管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin">
+            <el-icon><Monitor /></el-icon>
+            <span>监控后台</span>
+          </el-menu-item>
+        </template>
+
+        <!-- 普通用户: 定稿 6 项 -->
+        <template v-else>
+          <el-menu-item index="/home">
+            <el-icon><HomeFilled /></el-icon>
+            <span>首页</span>
+          </el-menu-item>
+          <el-menu-item index="/jobs">
+            <el-icon><Search /></el-icon>
+            <span>找职位</span>
+          </el-menu-item>
+          <el-menu-item index="/recommend">
+            <el-icon><MagicStick /></el-icon>
+            <span>AI 求职顾问</span>
+          </el-menu-item>
+          <el-menu-item index="/job-definitions">
+            <el-icon><Compass /></el-icon>
+            <span>岗位发现</span>
+          </el-menu-item>
+          <el-menu-item index="/knowledge-graph">
+            <el-icon><Connection /></el-icon>
+            <span>知识图谱</span>
+          </el-menu-item>
+          <el-menu-item index="/dashboard">
+            <el-icon><DataAnalysis /></el-icon>
+            <span>数据分析</span>
+          </el-menu-item>
+        </template>
       </el-menu>
 
       <!-- 用户操作区 -->
@@ -58,13 +78,16 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">
-                  <el-icon><User /></el-icon> 个人中心
-                </el-dropdown-item>
-                <el-dropdown-item command="resume">
-                  <el-icon><Document /></el-icon> 我的简历
-                </el-dropdown-item>
-                <el-dropdown-item divided command="logout">
+                <!-- 管理员不求职: 个人中心/我的简历是用户页, 点进去会被弹回, 不给入口 -->
+                <template v-if="!isAdmin">
+                  <el-dropdown-item command="profile">
+                    <el-icon><User /></el-icon> 个人中心
+                  </el-dropdown-item>
+                  <el-dropdown-item command="resume">
+                    <el-icon><Document /></el-icon> 我的简历
+                  </el-dropdown-item>
+                </template>
+                <el-dropdown-item :divided="!isAdmin" command="logout">
                   <el-icon><SwitchButton /></el-icon> 退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -102,7 +125,8 @@ const activeMenu = computed(() => {
   return path
 })
 
-const goHome = () => router.push('/home')
+// 登录后回各自工作台: 管理员落数据分析, 普通用户落首页
+const goHome = () => router.push(isAdmin.value ? '/dashboard' : '/home')
 const goLogin = () => router.push('/login')
 const goRegister = () => router.push('/register')
 

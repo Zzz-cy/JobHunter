@@ -20,7 +20,8 @@ const routes = [
     path: '/onboarding',
     name: 'Onboarding',
     component: () => import('@/views/Onboarding.vue'),
-    meta: { title: '完善求职期望', requiresAuth: true }
+    // userPage: 用户视角页——管理员访问一律重定向数据分析(见 beforeEach 规则 3)
+    meta: { title: '完善求职期望', requiresAuth: true, userPage: true }
   },
   {
     path: '/',
@@ -31,25 +32,25 @@ const routes = [
         path: 'home',
         name: 'Home',
         component: () => import('@/views/Home.vue'),
-        meta: { title: '首页', requiresAuth: false }
+        meta: { title: '首页', requiresAuth: false, userPage: true }
       },
       {
         path: 'jobs',
         name: 'JobList',
         component: () => import('@/views/jobs/JobList.vue'),
-        meta: { title: '职位列表', requiresAuth: false }
+        meta: { title: '职位列表', requiresAuth: false, userPage: true }
       },
       {
         path: 'jobs/:id',
         name: 'JobDetail',
         component: () => import('@/views/jobs/JobDetail.vue'),
-        meta: { title: '职位详情', requiresAuth: false }
+        meta: { title: '职位详情', requiresAuth: false, userPage: true }
       },
       {
         path: 'recommend',
         name: 'Recommend',
         component: () => import('@/views/ChatView.vue'),
-        meta: { title: 'AI 求职顾问', requiresAuth: true }
+        meta: { title: 'AI 求职顾问', requiresAuth: true, userPage: true }
       },
       {
         // 岗位推荐(简历→岗位匹配): 技能召回+向量召回+LLM重排
@@ -57,7 +58,7 @@ const routes = [
         path: 'job-recommend',
         name: 'JobRecommend',
         component: () => import('@/views/RecommendView.vue'),
-        meta: { title: '岗位推荐', requiresAuth: true }
+        meta: { title: '岗位推荐', requiresAuth: true, userPage: true }
       },
       {
         path: 'admin',
@@ -69,7 +70,7 @@ const routes = [
         path: 'resume',
         name: 'ResumeManage',
         component: () => import('@/views/ResumeManage.vue'),
-        meta: { title: '我的简历', requiresAuth: true }
+        meta: { title: '我的简历', requiresAuth: true, userPage: true }
       },
       {
         path: 'dashboard',
@@ -88,13 +89,13 @@ const routes = [
         path: 'knowledge-graph',
         name: 'KnowledgeGraph',
         component: () => import('@/views/KnowledgeGraph.vue'),
-        meta: { title: '知识图谱', requiresAuth: false }
+        meta: { title: '知识图谱', requiresAuth: false, userPage: true }
       },
       {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/Profile.vue'),
-        meta: { title: '个人中心', requiresAuth: true }
+        meta: { title: '个人中心', requiresAuth: true, userPage: true }
       },
       {
         path: 'data-admin',
@@ -120,7 +121,7 @@ const router = createRouter({
   }
 })
 
-// 全局前置守卫:页面标题 + 登录态校验 + 管理员权限校验
+// 全局前置守卫:页面标题 + 登录态校验 + 管理员权限校验 + 管理员/求职者视角隔离
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - JobHunter` : 'JobHunter'
 
@@ -137,13 +138,20 @@ router.beforeEach((to, from, next) => {
     next({ name: 'Home' })
     return
   }
-  // 3. 首登引导建档门禁: 未建档的登录用户只能停在引导页(无跳过, 堵 URL 逃逸)
+  // 3. 管理员视角隔离: admin 是管理者不是求职者, 用户页(meta.userPage)一律回数据分析
+  //    (手动输 URL 也拦; 数据分析/岗位发现两角色共用, 不在此列)
+  if (isLoggedIn && userStore.isAdmin && to.meta.userPage) {
+    next({ name: 'Dashboard' })
+    return
+  }
+  // 4. 首登引导建档门禁: 未建档的登录用户只能停在引导页(无跳过, 堵 URL 逃逸)
+  //    admin 豁免建档——管理员不求职, 豁免可避免与规则 3 互弹成死循环
   const isOnboarding = to.name === 'Onboarding'
-  if (isLoggedIn && userStore.userInfo?.onboarded === false && !isOnboarding) {
+  if (isLoggedIn && !userStore.isAdmin && userStore.userInfo?.onboarded === false && !isOnboarding) {
     next({ name: 'Onboarding' })
     return
   }
-  // 4. 已建档用户不该停在引导页 → 回首页(引导页自身放行在 3 之后, 不会死循环)
+  // 5. 已建档用户不该停在引导页 → 回首页(引导页自身放行在 4 之后, 不会死循环)
   if (isOnboarding && isLoggedIn && userStore.userInfo?.onboarded !== false) {
     next({ name: 'Home' })
     return

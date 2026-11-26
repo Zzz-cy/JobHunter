@@ -151,12 +151,13 @@ const handleSubmit = async () => {
       localStorage.removeItem('rememberAccount')
     }
 
-    // 4. 跳转: 未完成首登建档优先去引导页, 否则走 redirect/首页
+    // 4. 跳转: 未完成首登建档优先去引导页; 否则 redirect 优先,
+    //    admin 默认落数据分析(管理员工作台), 普通用户落首页
     ElMessage.success('登录成功')
     if (userStore.userInfo?.onboarded === false) {
       router.push('/onboarding')
     } else {
-      router.push(route.query.redirect || '/home')
+      router.push(route.query.redirect || (userStore.isAdmin ? '/dashboard' : '/home'))
     }
   } catch (err) {
     console.error(err)
