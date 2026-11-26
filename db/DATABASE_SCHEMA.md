@@ -125,6 +125,8 @@ level=1  IT       "互联网/IT"   parent_id=NULL
 | `user_code` | VARCHAR(64) | NO | — | **UNI** | 对外编码，URL 中使用（避免暴露自增 ID 被估算用户量） |
 | `phone` | VARCHAR(20) | YES | NULL | **UNI** | 手机号，**明文存储**（生产环境建议应用层加密），唯一 |
 | `email` | VARCHAR(128) | YES | NULL | **UNI** | 邮箱，唯一 |
+| `deleted_phone` | VARCHAR(20) | YES | NULL | — | 注销前手机号留档（注销时 `phone` 置 NULL 释放唯一键）；仅审计用，允许重复 |
+| `deleted_email` | VARCHAR(128) | YES | NULL | — | 注销前邮箱留档（注销时 `email` 置 NULL 释放唯一键）；仅审计用，允许重复 |
 | `password_hash` | VARCHAR(128) | NO | — | — | bcrypt 哈希（长度 ≥60，预留空间） |
 | `nickname` | VARCHAR(64) | YES | NULL | — | 昵称，前端展示用 |
 | `avatar_url` | VARCHAR(512) | YES | NULL | — | 头像 URL |

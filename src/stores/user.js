@@ -56,6 +56,14 @@ export const useUserStore = defineStore('user', {
       this.userInfo = null
       localStorage.removeItem('token')
       localStorage.removeItem('userInfo')
+      // 收藏/投递缓存是按用户维度的, 换账号不能残留(注销→重注册演示会放大该问题)
+      // 动态 import 取 store, 规避 user→job→request→user 的静态循环依赖
+      const { useJobStore } = await import('@/stores/job')
+      const jobStore = useJobStore()
+      jobStore.favoriteIds = new Set()
+      jobStore.appliedIds = new Set()
+      jobStore.favoritesLoaded = false
+      jobStore.appliedLoaded = false
     },
 
     // 获取当前用户信息

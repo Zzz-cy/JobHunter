@@ -6,8 +6,8 @@ from app.core.database import get_db
 from app.core.exceptions import NotFoundError
 from app.models import User, Application, Job
 from app.schemas import Result, UserOut, JobOut
-from app.schemas.user import UserUpdateSchema, OnboardingSchema, applicationOut, applicationSchema
-from app.services.user_service import update_user, seek_favorites, complete_onboarding
+from app.schemas.user import UserUpdateSchema, OnboardingSchema, DeleteAccountSchema, applicationOut, applicationSchema
+from app.services.user_service import update_user, seek_favorites, complete_onboarding, delete_account
 from app.utils.jwtUtil import get_current_user
 
 router = APIRouter(prefix="/user", tags=["用户接口"])
@@ -35,6 +35,16 @@ async def submit_onboarding(
     """已建档账号重复提交会被拒绝(每账号仅一次)。"""
     user_obj = await complete_onboarding(data, db, current_user.id)
     return Result.success(data=UserOut.model_validate(user_obj), message="建档完成")
+
+@router.delete("/account", response_model=Result, summary="注销当前账号(需输入登录密码确认)")
+async def delete_my_account(
+        data: DeleteAccountSchema,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    """软删除当前账号并释放手机号/邮箱(留档到 deleted_phone/deleted_email); 不可恢复。"""
+    await delete_account(data, db, current_user.id)
+    return Result.success(message="账号已注销")
 
 @router.get("/applications/favorites", response_model=Result[list[JobOut]], summary="获取当前用户收藏的职位")
 async def get_favorites(

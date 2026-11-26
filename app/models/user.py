@@ -22,6 +22,11 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     phone: Mapped[str | None] = mapped_column(String(20), unique=True)
     email: Mapped[str | None] = mapped_column(String(128), unique=True)
 
+    # 注销留档: 注销时把原联系方式拷到这里, phone/email 置 NULL 释放唯一键
+    # 仅审计用(查"该手机号是否曾注销/重新注册"), 不参与登录/搜索/唯一约束
+    deleted_phone: Mapped[str | None] = mapped_column(String(20))
+    deleted_email: Mapped[str | None] = mapped_column(String(128))
+
     # 凭据
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
 

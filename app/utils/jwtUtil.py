@@ -65,8 +65,11 @@ async def get_current_user(
         # ValueError: 万一 payload 解析出来 sub 是意料之外的类型(防御性兜底)
         raise credentials_exception
 
-    user = await db.scalar(select(User).where(User.id == int(user_id)))
+    user = await db.scalar(
+        select(User).where(User.id == int(user_id), User.is_deleted == 0)
+    )
     if user is None:
+        # 用户不存在 / 已注销(软删除): 已签发 token 也立即失效
         raise credentials_exception
     # 封禁账号: 已签发的 token 也立即失效(前端 401 拦截器会自动登出)
     if user.status == "banned":

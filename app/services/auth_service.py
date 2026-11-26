@@ -53,7 +53,9 @@ async def login(user: LoginSchema, db: AsyncSession):
         conditions.append(User.phone == user.account)
         conditions.append(User.email == user.account)
 
-    existing = await db.scalar(select(User).where(or_(*conditions)))
+    existing = await db.scalar(
+        select(User).where(or_(*conditions), User.is_deleted == 0)
+    )
     if not existing:
         raise NotFoundError("用户名或密码错误")
     # 检查密码是否正确

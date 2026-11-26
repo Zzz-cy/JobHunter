@@ -8,6 +8,7 @@ from app.schemas.user import (
     AdminUserOut,
     AdminUserRoleSchema,
     AdminUserStatusSchema,
+    DeleteAccountSchema,
 )
 from app.schemas.jobs import JobSearchSchema, CompanyBrief, JobSkillOut, JobOut
 from app.schemas.stats import OverviewOut
@@ -27,6 +28,8 @@ __all__ = [
     "LoginOut",
     # ---- 获取用户信息 ----
     "UserOut",
+    # ---- 注销账号 ----
+    "DeleteAccountSchema",
     # ---- 账号管理(管理员) ----
     "AdminUserQuery",
     "AdminUserOut",

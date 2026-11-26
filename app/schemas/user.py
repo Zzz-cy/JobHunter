@@ -25,6 +25,12 @@ class OnboardingSchema(SchemaBase):
     )
 
 
+class DeleteAccountSchema(SchemaBase):
+    """注销账号入参(需输入登录密码确认, 防误触/防他人借登录态恶意注销)。"""
+
+    password: str = Field(min_length=1, max_length=64, description="登录密码")
+
+
 # ============================================================
 # 账号管理(管理员)
 # ============================================================

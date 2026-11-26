@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ParamError
 from app.models import User, Application, Job
-from app.schemas.user import UserUpdateSchema, OnboardingSchema, AdminUserQuery
+from app.schemas.user import UserUpdateSchema, OnboardingSchema, AdminUserQuery, DeleteAccountSchema
 from app.utils.pwdUtil import hash_password, verify_password
 
 
@@ -70,6 +70,32 @@ async def update_user(
             raise ParamError("该邮箱已被其他账号使用")
         user_obj.email = user.email
 
+    await db.commit()
+
+async def delete_account(
+        data: DeleteAccountSchema,
+        db: AsyncSession,
+        user_id: int,
+) -> None:
+    """注销当前账号: 验密码 -> 联系方式留档并置 NULL(释放唯一键) -> 软删除。
+
+    - 不可恢复; 简历/收藏/投递等关联数据不级联清理, 随账号不可达。
+    - 留档列 deleted_phone/deleted_email 仅供审计(是否曾注销/重新注册), 不参与登录。
+    """
+    user_obj = await db.scalar(
+        select(User).where(User.id == user_id, User.is_deleted == 0)
+    )
+    if not user_obj:
+        raise NotFoundError("用户不存在")
+    if not verify_password(data.password, user_obj.password_hash):
+        raise ParamError("密码错误")
+
+    # 先留档再置空: 原手机号/邮箱可被重新注册, 同时留下"该账号曾注销"的线索
+    user_obj.deleted_phone = user_obj.phone
+    user_obj.deleted_email = user_obj.email
+    user_obj.phone = None
+    user_obj.email = None
+    user_obj.is_deleted = 1
     await db.commit()
 
 async def seek_favorites(

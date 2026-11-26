@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     `user_code`     VARCHAR(64)  NOT NULL,
     `phone`         VARCHAR(20)  DEFAULT NULL COMMENT '手机号(明文存储,生产环境建议加密)',
     `email`         VARCHAR(128) DEFAULT NULL,
+    `deleted_phone` VARCHAR(20)  DEFAULT NULL COMMENT '注销前手机号(留档,仅审计用;注销时 phone 置 NULL)',
+    `deleted_email` VARCHAR(128) DEFAULT NULL COMMENT '注销前邮箱(留档,仅审计用;注销时 email 置 NULL)',
     `password_hash` VARCHAR(128) NOT NULL,
     `nickname`      VARCHAR(64)  DEFAULT NULL,
     `avatar_url`    VARCHAR(512) DEFAULT NULL,

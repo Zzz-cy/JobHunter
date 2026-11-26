@@ -172,6 +172,15 @@
               <el-button @click="resetSettings">重置</el-button>
             </el-form-item>
           </el-form>
+
+          <!-- 危险区: 注销账号(不可恢复, 输登录密码确认) -->
+          <div class="danger-zone">
+            <h4>危险区</h4>
+            <p class="danger-desc">
+              注销后账号无法恢复，简历、收藏、投递记录等将不再可见；手机号/邮箱会被释放，可用原手机号重新注册。
+            </p>
+            <el-button type="danger" plain @click="handleDeleteAccount">注销账号</el-button>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -380,6 +389,33 @@ const resetSettings = () => {
   })
 }
 
+// 注销账号: 输登录密码确认 -> 后端软删并释放手机号/邮箱 -> 清本地态回登录页
+const handleDeleteAccount = async () => {
+  try {
+    const { value } = await ElMessageBox.prompt(
+      '注销后账号无法恢复，简历、收藏、投递记录等将不再可见；手机号/邮箱会被释放，可用原手机号重新注册。',
+      '注销账号',
+      {
+        type: 'warning',
+        confirmButtonText: '确认注销',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+        inputType: 'password',
+        inputPlaceholder: '请输入登录密码',
+        inputValidator: (val) => (val ? true : '请输入登录密码'),
+        distinguishCancelAndClose: true
+      }
+    )
+    await request.delete('/user/account', { data: { password: value } })
+    await userStore.logout()
+    ElMessage.success('账号已注销')
+    router.push('/login')
+  } catch (err) {
+    // 取消/关闭弹窗(字符串)静默; 接口错误已由 request 拦截器统一 toast, 不重复提示
+    if (typeof err !== 'string') console.error('注销账号失败', err)
+  }
+}
+
 // 确认密码校验:必须和新密码一致
 const validateConfirm = (_rule, value, callback) => {
   if (value !== settings.newPassword) callback(new Error('两次输入的密码不一致'))
@@ -564,8 +600,22 @@ onMounted(() => {
   text-align: right;
 }
 
+.danger-zone {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #ebeef5;
+  max-width: 500px;
+}
+
 .danger-zone h4 {
   color: #f56c6c;
   margin-bottom: 12px;
+}
+
+.danger-desc {
+  color: #909399;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 12px;
 }
 </style>
