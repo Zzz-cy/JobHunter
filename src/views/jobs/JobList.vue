@@ -83,9 +83,10 @@
       <!-- 左侧:结果列表 -->
       <div class="result-main">
         <div class="result-header">
-          <span class="result-count">
+          <span v-if="loaded" class="result-count">
             共 <strong>{{ total }}</strong> 个职位
           </span>
+          <span v-else class="result-count">职位加载中…</span>
           <el-radio-group v-model="sortBy" size="small" @change="handleSortChange">
             <el-radio-button label="latest">最新</el-radio-button>
             <el-radio-button label="salary">薪资</el-radio-button>
@@ -93,7 +94,7 @@
         </div>
 
         <!-- 空状态 -->
-        <el-empty v-if="!loading && jobList.length === 0" description="暂无符合条件的职位,试试调整筛选条件?" />
+        <el-empty v-if="loaded && !loading && jobList.length === 0" description="暂无符合条件的职位,试试调整筛选条件?" />
 
         <!-- 加载骨架屏 -->
         <div v-if="loading">
@@ -182,7 +183,10 @@ const route = useRoute()
 const jobStore = useJobStore()
 const userStore = useUserStore()
 
-const loading = ref(false)
+// 首帧即骨架屏: 避免 ES 首查 3-5 秒期间先闪现「共 0 个职位」+ 空态
+const loading = ref(true)
+// 首次请求是否已结束(成功/失败都算), 用于门控结果计数与空态
+const loaded = ref(false)
 const total = ref(0)
 const jobList = ref([])
 const sortBy = ref('latest')
@@ -245,12 +249,19 @@ const industryOptions = computed(() => buildIndustryTree(jobStore.industries || 
 const hotKeywords = computed(() => jobStore.hots || [])
 
 const handleSearch = async () => {
+  loading.value = true
   // 把过滤条件同步到 store(薪资范围拆分等转换逻辑由 store 负责)
   jobStore.setQueryParams(filters)
   jobStore.queryParams.sort = sortBy.value
-  await jobStore.fetchJobList()
-  jobList.value = jobStore.jobList
-  total.value = jobStore.total
+  try {
+    await jobStore.fetchJobList()
+    jobList.value = jobStore.jobList
+    total.value = jobStore.total
+  } finally {
+    // 失败也置 true: 回到「0 条 + 空态」的原有兜底, 而不是永远停在加载中
+    loading.value = false
+    loaded.value = true
+  }
 }
 
 // 切换排序方式 = 重新搜索(回第 1 页), 复用 handleSearch 避免代码重复
